@@ -5,6 +5,7 @@ Only synthetic XEX/XISO files are used; the launcher/game is never started.
 """
 import os
 from pathlib import Path
+import re
 import shutil
 import subprocess
 import tempfile
@@ -30,7 +31,9 @@ class InnoSetupTests(unittest.TestCase):
         # Exercise the same escaped GUID AppId format as production.
         cls.app_id = "{" + str(uuid.uuid4()).upper() + "}"
         cls.legacy_key = 'Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\' + cls.app_id + '-Legacy'
-        cls.current_version = os.environ.get("NARUTORISE_TEST_VERSION", "0.1.0-beta.2")
+        default_version = re.search(r'#define MyAppVersion "([^"]+)"',
+                                    (ROOT / "packaging/version.iss").read_text()).group(1)
+        cls.current_version = os.environ.get("NARUTORISE_TEST_VERSION", default_version)
         cls.uninstall_key = 'Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\' + cls.app_id + '_is1'
 
         def compile_setup(source, version, output):
@@ -50,7 +53,9 @@ class InnoSetupTests(unittest.TestCase):
         shutil.copytree(package, previous_package)
         for name in ("narutorise.exe", "rexruntime.dll"):
             (previous_package / name).write_bytes(b"synthetic previous-release binary")
-        cls.previous_setup = compile_setup(previous_package, "1.0.0", cls.root / "previous")
+        # The public beta 1 installer shipped with this internal version label.
+        cls.previous_setup = compile_setup(previous_package, "1.0.0-beta.1", cls.root / "previous")
+        cls.previous_stable_setup = compile_setup(previous_package, "1.0.0", cls.root / "previous-stable")
 
     @classmethod
     def tearDownClass(cls):
@@ -253,13 +258,28 @@ class InnoSetupTests(unittest.TestCase):
         with winreg.CreateKeyEx(winreg.HKEY_CURRENT_USER, self.legacy_key, 0,
                                 winreg.KEY_WRITE | winreg.KEY_WOW64_64KEY) as key:
             winreg.SetValueEx(key, "InstallLocation", 0, winreg.REG_SZ, str(self.dest))
-            winreg.SetValueEx(key, "DisplayVersion", 0, winreg.REG_SZ, "1.0.0")
+            winreg.SetValueEx(key, "DisplayVersion", 0, winreg.REG_SZ, "1.0.0-beta.1")
         self.assertEqual(self.install(mode="update", use_dir=False), 0)
         self.assert_current_release()
         self.assert_user_files(files)
         self.assertEqual((self.dest / "narutorise_installer.exe").read_bytes(), b"synthetic legacy binary")
         with self.assertRaises(FileNotFoundError):
             winreg.OpenKey(winreg.HKEY_CURRENT_USER, self.legacy_key, 0, winreg.KEY_READ | winreg.KEY_WOW64_64KEY)
+
+    def test_update_from_beta2_preserves_user_data(self):
+        if self.current_version != "0.1.0-beta.3":
+            self.skipTest("Beta 2 to beta 3 migration")
+        self.assertEqual(self.install(), 0)
+        for name in ("narutorise.exe", "rexruntime.dll"):
+            (self.dest / name).write_bytes(b"synthetic beta 2 binary")
+        (self.dest / "narutorise.version").unlink()
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, self.uninstall_key, 0,
+                            winreg.KEY_WRITE | winreg.KEY_WOW64_64KEY) as key:
+            winreg.SetValueEx(key, "DisplayVersion", 0, winreg.REG_SZ, "0.1.0-beta.2")
+        files = self.user_files()
+        self.assertEqual(self.install(mode="update", use_dir=False), 0)
+        self.assert_current_release()
+        self.assert_user_files(files)
 
     def test_update_portable_without_version_or_registration(self):
         for name in ("narutorise.exe", "narutorise_launcher.exe"):
@@ -282,20 +302,21 @@ class InnoSetupTests(unittest.TestCase):
         self.assertNotEqual(self.install(mode="update", iso=self.iso()), 0)
         self.assertNotEqual(self.install(mode="invalid"), 0)
         self.assertEqual((self.dest / "narutorise.exe").read_bytes(), previous)
-        self.assertEqual((self.dest / "narutorise.version").read_text().strip(), "1.0.0")
+        self.assertEqual((self.dest / "narutorise.version").read_text().strip(), "1.0.0-beta.1")
 
     def test_update_blocks_older_installer(self):
         self.assertEqual(self.install(), 0)
         files = self.user_files()
-        for mode in ("update", "install"):
-            with self.subTest(mode=mode):
-                self.assertNotEqual(self.install(mode=mode, setup=self.previous_setup), 0)
-                self.assert_current_release()
-                self.assert_user_files(files)
+        for setup in (self.previous_setup, self.previous_stable_setup):
+            for mode in ("update", "install"):
+                with self.subTest(setup=setup.parent.name, mode=mode):
+                    self.assertNotEqual(self.install(mode=mode, setup=setup), 0)
+                    self.assert_current_release()
+                    self.assert_user_files(files)
 
     def test_update_compares_numeric_versions(self):
-        if self.current_version == "0.1.0-beta.2":
-            for previous_version in ("1.0.0", "1.0.1", "1.0.2"):
+        if self.current_version in ("0.1.0-beta.2", "0.1.0-beta.3"):
+            for previous_version in ("1.0.0-beta.1", "1.0.0", "1.0.1", "1.0.2"):
                 with self.subTest(previous_version=previous_version):
                     for name in ("narutorise.exe", "narutorise_launcher.exe"):
                         (self.dest / name).write_bytes(b"synthetic superseded binary")
@@ -306,9 +327,12 @@ class InnoSetupTests(unittest.TestCase):
                     self.assert_user_files(files)
         for name in ("narutorise.exe", "narutorise_launcher.exe"):
             (self.dest / name).write_bytes(b"synthetic newer portable binary")
-        (self.dest / "narutorise.version").write_text("1.0.10\n")
-        self.assertNotEqual(self.install(mode="update"), 0)
-        self.assertEqual((self.dest / "narutorise.exe").read_bytes(), b"synthetic newer portable binary")
+        for newer_version in ("1.0.0-beta.2", "1.0.0-beta.10", "1.0.10"):
+            with self.subTest(newer_version=newer_version):
+                (self.dest / "narutorise.version").write_text(newer_version + "\n")
+                self.assertNotEqual(self.install(mode="update"), 0)
+                self.assertEqual((self.dest / "narutorise.version").read_text().strip(), newer_version)
+                self.assertEqual((self.dest / "narutorise.exe").read_bytes(), b"synthetic newer portable binary")
 
     def test_existing_install_can_import_iso_in_install_mode(self):
         self.assertEqual(self.install(), 0)
