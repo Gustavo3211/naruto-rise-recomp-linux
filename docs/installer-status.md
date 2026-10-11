@@ -87,3 +87,53 @@ All 17 integration tests also passed against that assembled real package in
 `dist/naruto-rise-recomp-win-amd64`. This run used unique GUID AppIds with the
 same brace escaping as production. Install/update/uninstall were exercised in
 temporary destinations; the production registration and game were not touched.
+
+## Beta 1 migration verification — 2026-10-11
+
+Issue #11 reports beta 1's internal `1.0.0-beta.1` version being treated as
+newer than `0.1.0-beta.2`. Before the fix, the integration test using that
+exact previous version failed with installer exit code 7. The beta 2 migration
+allowlist now includes `1.0.0-beta.1` alongside the existing old labels.
+
+All 17 Inno integration tests passed in 66.245 seconds using
+`out/language-check/installer-fixture` and the helper from
+`app/out/build/win-amd64-release`. The tests use unique test AppIds and temporary
+destinations. Coverage includes beta 1 metadata read from the version file,
+Inno registration and legacy registration; preservation of configuration,
+game data, DLCs, saves and personal files; and rejection of the reverse
+transition and unrelated newer versions (`1.0.0-beta.2`, `1.0.0-beta.10`,
+`1.0.10`). The game was not launched.
+
+The three update, version-check and downgrade tests also passed against the
+actual beta 2 package in `dist/v0.1.0-beta.2-update/naruto-rise-recomp-win-amd64`
+in 104.793 seconds, with isolated test AppIds. That directory's original
+installer hash matches the GitHub beta 2 release asset. A corrected installer
+was compiled locally from the same package into
+`dist/issue-11-fix/NarutoRiseInstaller.exe` (20,325,174 bytes), with SHA-256
+`065690add96792cc27ab2826d60a4468d3d4f7a29f22160c685352d23eabf11a`.
+It has not been published; interactive wizard validation remains a manual check.
+
+## Beta 3 artifact preparation — 2026-10-11
+
+Local release files are in `dist/v0.1.0-beta.3/`. This is an installer and
+metadata update using the verified published beta 2 portable payload from
+`dist/v0.1.0-beta.2-update/`. The game, launcher, runtime and all three character
+DLC engine DLLs retain their beta 2 hashes. Unrelated local native-renderer
+experiments are excluded; no game/runtime rebuild was performed.
+
+The installer product version and portable marker both read `0.1.0-beta.3`.
+The numbering-reset exception covers beta 3 as well as beta 2, allowing beta 1's
+`1.0.0-beta.1` identifier and the old local labels to migrate. The integration
+suite also covers beta 2 metadata found only in the Inno registration.
+
+The assembly recipe is `out/release-v0.1.0-beta.3/assemble.py`. Binary import
+checks found no debug CRT dependencies. Every file in the ZIP matches its
+portable source, and `game/` contains only the distribution placeholder.
+No GitHub release or tag was created. Gameplay and the interactive wizard
+remain outside this verification scope.
+
+All 18 installer integration tests passed against the beta 3 portable package
+in 196.908 seconds, using unique test AppIds and temporary destinations.
+The beta 1 migration and beta 2 registry-only update both preserved user files.
+The test log, release notes, source patch, build provenance and SHA-256 checksums
+are stored alongside the local installer and ZIP.

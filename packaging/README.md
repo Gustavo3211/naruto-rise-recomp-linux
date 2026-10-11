@@ -148,15 +148,17 @@ replacement by an older installer; reinstalling the same version is allowed.
 The version marker is also included in portable packages and is removed by the
 Inno uninstaller. Keep the same production AppId for every release.
 
-The `0.1.0-beta.2` installer accepts migration from the previous public `1.0.0`
-label and the local `1.0.1`/`1.0.2` builds, preserving user data. This numbering
-reset is limited to beta 2; unrelated newer versions remain protected, and the
+The `0.1.0-beta.2` and `0.1.0-beta.3` installers accept migration from beta 1's shipped
+`1.0.0-beta.1` identifier, the old `1.0.0` label and the local `1.0.1`/`1.0.2`
+builds, preserving user data. The public `v0.1.0-beta.1` release tag did not
+match its installer's internal version. This numbering reset is limited to
+betas 2 and 3; unrelated newer versions remain protected, and the
 updated installer code rejects the reverse transition to these old labels.
 
 Build this beta update with:
 
 ```powershell
-pwsh -File packaging/package-release.ps1 -Build -Version 0.1.0-beta.2
+pwsh -File packaging/package-release.ps1 -Build -Version 0.1.0-beta.3
 ```
 
 For automation, the installer accepts `/MODE=update` or `/MODE=install`; when
@@ -182,8 +184,9 @@ temporary directories with shortcuts and launcher execution disabled. Fixtures
 are synthetic and contain no original game data. The test compiler path defaults
 to `%LOCALAPPDATA%\Programs\Inno Setup 6\ISCC.exe`; override with
 `NARUTORISE_TEST_ISCC`. Use `NARUTORISE_TEST_BUILD` for a custom helper build
-directory. Tests compile two releases and exercise updates, legacy detection,
-portable conversion, numeric version checks, and user data preservation.
+directory. Tests compile beta 1, the old stable label and the current release,
+and exercise updates, legacy detection, portable conversion, numeric version
+checks, and user data preservation.
 See [installer verification](../docs/installer-status.md) for available checks and the manual validation checklist; record results for each release.
 
 ---

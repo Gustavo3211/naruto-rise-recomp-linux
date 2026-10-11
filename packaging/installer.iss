@@ -319,8 +319,13 @@ end;
 
 function IsSupersededVersion(const Version: String): Boolean;
 begin
-  Result := (Version = '1.0.0') or (Version = '1.0.1') or
-    (Version = '1.0.2');
+  Result := (Version = '1.0.0-beta.1') or (Version = '1.0.0') or
+    (Version = '1.0.1') or (Version = '1.0.2');
+end;
+
+function IsRenumberedBetaVersion(const Version: String): Boolean;
+begin
+  Result := (Version = '0.1.0-beta.2') or (Version = '0.1.0-beta.3');
 end;
 
 function DestinationError: String;
@@ -342,16 +347,17 @@ begin
   end;
   if not IsExistingInstallation(WizardDirValue) then Exit;
   PreviousVersion := InstalledVersion(WizardDirValue);
-  { Beta 2 replaces the old public 1.0.0 label and local 1.0.1/1.0.2 builds.
-    Scope the numbering reset to this release; other versions still use the
+  { Betas 2 and 3 replace beta 1's shipped 1.0.0-beta.1 label, the old 1.0.0
+    label and local 1.0.1/1.0.2 builds.
+    Scope the numbering reset to these releases; other versions still use the
     normal downgrade check. Reject the reverse transition as well. }
-  if ('{#MyAppVersion}' = '0.1.0-beta.2') and
+  if IsRenumberedBetaVersion('{#MyAppVersion}') and
     IsSupersededVersion(PreviousVersion) then
   begin
     Log('Migrating superseded version ' + PreviousVersion + ' to {#MyAppVersion}.');
     Exit;
   end;
-  if (PreviousVersion = '0.1.0-beta.2') and
+  if IsRenumberedBetaVersion(PreviousVersion) and
     IsSupersededVersion('{#MyAppVersion}') then
   begin
     Result := FmtMessage(CustomMessage('VersionNewer'), [PreviousVersion, '{#MyAppVersion}']);
