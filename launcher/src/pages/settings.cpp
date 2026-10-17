@@ -29,8 +29,8 @@ constexpr Option kBrightness{TextId::BrightnessLabel, TextId::BrightnessDescript
 constexpr Option kVsync{TextId::VsyncLabel, TextId::VsyncDescription, Renderer::kBoth,
                         TextId::VsyncNativeDescription};
 constexpr Option kFrameRate{TextId::FrameRateLabel, TextId::FrameRateDescription, Renderer::kNative};
-// 30 is the game's; the others, common monitor refresh rates.
-constexpr int kFrameRates[] = {30, 60, 75, 90, 120, 144, 165, 240};
+// From the game's 30.
+constexpr int kFrameRates[] = {30, 60, 120};
 constexpr Option kFullscreen{TextId::FullscreenLabel, TextId::FullscreenDescription};
 
 constexpr Option kMsaa{TextId::MsaaLabel, TextId::MsaaDescription, Renderer::kNative};
