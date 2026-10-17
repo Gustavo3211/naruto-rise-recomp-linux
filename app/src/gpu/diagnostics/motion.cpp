@@ -2,6 +2,7 @@
 #include "gpu/diagnostics/motion.h"
 #include "gpu/diagnostics/diagnostics.h"
 #include "gpu/interpolation/tick.h"
+#include "gpu/interpolation/transforms.h"
 #include "gpu/common/guest_memory.h"
 #include "gpu/host/services.h"
 #include "gpu/textures/formats.h"
@@ -14,6 +15,7 @@
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 #include <map>
 #include <mutex>
 #include <string>
@@ -24,8 +26,6 @@
 
 extern "C" void __imp__sub_8265A058(PPCContext& __restrict, uint8_t*);
 extern "C" void __imp__sub_8267A2A0(PPCContext& __restrict, uint8_t*);
-extern "C" void __imp__sub_825E2A08(PPCContext& __restrict, uint8_t*);
-extern "C" void __imp__sub_8259FF40(PPCContext& __restrict, uint8_t*);
 extern "C" void __imp__sub_820FC008(PPCContext& __restrict, uint8_t*);
 
 namespace gpu::motion {
@@ -114,7 +114,67 @@ int64_t Microseconds() {
   return (now.QuadPart - start) * 1000000 / frequency;
 }
 
+// The stage probe: the words of the view ([82709C40], kViewBytes from its
+// start) and of the camera's copy (kCopy, kCopyBytes) that change between the
+// stages of an iteration: the view block's start (82684050), the display's
+// entry, the camera's entry and exit (8267A2A0), the display's exit and the
+// delivery; counted apart for the iterations with and without a tick (the
+// change from the delivery to the next view block counts for the next
+// iteration).
+enum Probe { kViewStart, kDisplayEntry, kCameraEntry, kCameraExit, kDisplayExit, kDelivery, kProbes };
+constexpr const char* kProbeNames[kProbes] = {"view_start", "display_in", "camera_in", "camera_out", "display_out",
+                                              "delivered"};
+constexpr uint32_t kViewHolder = 0x82709C40, kViewBytes = 2600, kCopy = 0x82C0F1F8, kCopyBytes = 256;
+constexpr uint32_t kProbeWords = (kViewBytes + kCopyBytes) / 4;
+std::vector<uint8_t> probe_snapshot;
+int probe_stage = -1;
+uint64_t probe_words[2][kProbes][kProbes][kProbeWords]{};
+uint64_t probe_compares[2][kProbes][kProbes]{};
+std::string view_pointers;
+void ProbeStage(uint8_t* base, Probe stage) {
+  if (!Enabled()) return;
+  const uint32_t view = Get32(base, kViewHolder);
+  if (!view) return;
+  std::vector<uint8_t> now(kViewBytes + kCopyBytes);
+  if (!CopyFromGuest(now.data(), base + view, kViewBytes) ||
+      !CopyFromGuest(now.data() + kViewBytes, base + kCopy, kCopyBytes))
+    return;
+  const int t = tick::Current().tick ? 1 : 0;
+  if (probe_stage >= 0) {
+    ++probe_compares[t][probe_stage][stage];
+    for (uint32_t w = 0; w < kProbeWords; ++w)
+      if (std::memcmp(now.data() + 4 * w, probe_snapshot.data() + 4 * w, 4)) ++probe_words[t][probe_stage][stage][w];
+  }
+  probe_snapshot.swap(now);
+  probe_stage = stage;
+  if (view_pointers.empty()) {  // The view's functions (8259E908 calls +24, +20 and +60) and the camera's call.
+    const uint32_t manager = Get32(base, kCopy), table = manager ? Get32(base, manager) : 0;
+    view_pointers = fmt::format("{{\"view\":\"{:08X}\",\"p20\":\"{:08X}\",\"p24\":\"{:08X}\",\"p28\":\"{:08X}\","
+                                "\"p48\":\"{:08X}\",\"p60\":\"{:08X}\",\"manager\":\"{:08X}\",\"manager_12\":\"{:08X}\"}}",
+                                view, Get32(base, view + 20), Get32(base, view + 24), Get32(base, view + 28),
+                                Get32(base, view + 48), Get32(base, view + 60), manager,
+                                table ? Get32(base, table + 12) : 0);
+  }
+}
+// The probe's changed words as ranges [first byte, last byte, most changes], from first to end.
+std::string ProbeRanges(const uint64_t* words, uint32_t first, uint32_t end) {
+  std::string out;
+  for (uint32_t w = first; w < end;) {
+    if (!words[w]) {
+      ++w;
+      continue;
+    }
+    uint32_t stop = w;
+    uint64_t most = 0;
+    while (stop < end && words[stop]) most = std::max(most, words[stop++]);
+    out += fmt::format("{}[{},{},{}]", out.empty() ? "" : ",", 4 * (w - first), 4 * (stop - first) - 1, most);
+    w = stop;
+  }
+  return out;
+}
+
 void Display(PPCContext& ctx, uint8_t* base) {
+  ProbeStage(base, kDisplayEntry);
   if (!Enabled()) {
     __imp__sub_8265A058(ctx, base);
     return;
@@ -151,20 +211,24 @@ void Display(PPCContext& ctx, uint8_t* base) {
   in_display = false;
   for (const auto& [address, value] : raised) PutFloat(base, address, value);
   StageHash(base, kDisplayOut);
+  ProbeStage(base, kDisplayExit);
   if (!file) return;
   const int64_t us = Microseconds();
   const uint32_t cut = Get32(base, kCutCounter);
-  std::string rows = fmt::format("{},{},{},{},{},{:.4f},{},F,0,{},{},{},{},{},0\n", displays, us, f.index, int(f.gate),
-                                 int(f.tick), f.alpha, cut, live.size(), moving.size(), mounted, mounted_outside,
-                                 raised.size());
+  const auto& applied = interpolation::LastApplied();
+  const int camera_flags = (applied.camera ? 1 : 0) | (applied.camera_cut ? 4 : 0);
+  std::string rows = fmt::format("{},{},{},{},{},{:.4f},{},F,{},{},{},{},{},{},{:.6f},{},{}\n", displays, us, f.index,
+                                 int(f.gate), int(f.tick), f.alpha, cut, camera_flags, live.size(), moving.size(),
+                                 mounted, mounted_outside, raised.size(), f.period, applied.objects,
+                                 applied.object_cuts);
   if (view)
-    rows += fmt::format("{},{},{},{},{},{:.4f},{},C,{:08X},{:.5f},{:.5f},{:.5f},{:.5f},{:.5f},{:.5f}\n", displays, us,
+    rows += fmt::format("{},{},{},{},{},{:.4f},{},C,{:08X},{:.5f},{:.5f},{:.5f},{:.5f},{:.5f},{:.5f},0,0\n", displays, us,
                         f.index, int(f.gate), int(f.tick), f.alpha, cut, view, Finite(GetFloat(base, view + 476)),
                         Finite(GetFloat(base, view + 480)), Finite(GetFloat(base, view + 484)),
                         Finite(GetFloat(base, view + 460)), Finite(GetFloat(base, view + 464)),
                         Finite(GetFloat(base, view + 468)));
   for (const auto& o : moving)
-    rows += fmt::format("{},{},{},{},{},{:.4f},{},O,{:08X},{:.5f},{:.5f},{:.5f},{:.5f},{:.5f},{:.5f}\n", displays, us,
+    rows += fmt::format("{},{},{},{},{},{:.4f},{},O,{:08X},{:.5f},{:.5f},{:.5f},{:.5f},{:.5f},{:.5f},0,0\n", displays, us,
                         f.index, int(f.gate), int(f.tick), f.alpha, cut, o.object, o.x, o.y, o.z, o.a, o.b, o.c);
   std::fputs(rows.c_str(), file);
   if (displays % 60 == 0) std::fflush(file);
@@ -194,6 +258,16 @@ void Record(uint8_t* base) {
     for (const auto& [k, n] : kinds)
       formats += fmt::format("{}[{},{},{}]", formats.empty() ? "" : ",", k.first, k.second, n);
   }
+  std::string probe;
+  for (int t = 1; t >= 0; --t)
+    for (int x = 0; x < kProbes; ++x)
+      for (int y = 0; y < kProbes; ++y) {
+        if (!probe_compares[t][x][y]) continue;
+        probe += fmt::format("{}{{\"tick\":{},\"from\":\"{}\",\"to\":\"{}\",\"compares\":{},\"view\":[{}],\"copy\":[{}]}}",
+                             probe.empty() ? "" : ",", t, kProbeNames[x], kProbeNames[y], probe_compares[t][x][y],
+                             ProbeRanges(probe_words[t][x][y], 0, kViewBytes / 4),
+                             ProbeRanges(probe_words[t][x][y], kViewBytes / 4, kProbeWords));
+      }
   const uint32_t time = Get32(base, 0x82C0F080);
   const uint32_t context = Get32(base, 0x82C0F008);
   host::Record("native-d3d-motion", fmt::format(
@@ -201,13 +275,14 @@ void Record(uint8_t* base) {
       "\"displays_per_s\":{:.3f},\"cameras_per_s\":{:.3f},\"fixed\":{},\"period\":{:.6f},\"title_interval\":{},"
       "\"tick\":{{\"index\":{},\"gate\":{},\"ticks\":{},\"skipped\":{}}},\"mounts\":{},\"probe_units\":{},"
       "\"vertex_textures\":{{\"ranges\":{},\"notes\":{},\"distinct\":{},\"hashed\":{},\"format_bytes_count\":[{}],"
-      "\"changes_tick\":{{{}}},\"changes_without_tick\":{{{}}}}}",
+      "\"changes_tick\":{{{}}},\"changes_without_tick\":{{{}}}}},\"probe\":{{\"pointers\":{},\"stages\":[{}]}}",
       main_steps, displays, cameras, seconds, seconds > 0 ? double(main_steps - last_main_steps) / seconds : 0.0,
       seconds > 0 ? double(displays - last_displays) / seconds : 0.0,
       seconds > 0 ? double(cameras - last_cameras) / seconds : 0.0, time ? Get32(base, time + 72) : 0,
       time ? Finite(GetFloat(base, time + 76)) : 0.0f, context ? Get32(base, context + 448) : 0,
       tick::Current().index, tick::Current().gate, tick::Current().ticks, tick::Current().skipped, mounts, probe_units,
-      range_count, note_count, distinct_count, hashed, formats, pairs[1], pairs[0]));
+      range_count, note_count, distinct_count, hashed, formats, pairs[1], pairs[0],
+      view_pointers.empty() ? std::string("null") : view_pointers, probe));
   last_record = us;
   last_displays = displays;
   last_cameras = cameras;
@@ -224,7 +299,7 @@ bool Enabled() {
         probe_units = std::strtof(probe, nullptr);
       if (const char* dir = std::getenv("REX_NATIVE_FRAME_DIR"); dir && *dir) {
         file = std::fopen(fmt::format("{}/motion.csv", dir).c_str(), "w");
-        if (file) std::fputs("display,us,iteration,gate,tick,alpha,cut,kind,id,x,y,z,a,b,c\n", file);
+        if (file) std::fputs("display,us,iteration,gate,tick,alpha,cut,kind,id,x,y,z,a,b,c,d,e\n", file);
       }
     }
   }
@@ -246,6 +321,21 @@ void LoopStart(uint8_t* base) {
 void MainStepDone(uint8_t* base) {
   if (!Enabled()) return;
   if (++main_steps % 120 == 0) Record(base);
+}
+
+void ViewStart(uint8_t* base, uint32_t) { ProbeStage(base, kViewStart); }
+
+void Delivered(uint8_t* base) {
+  if (!Enabled()) return;
+  StageHash(base, kDelivered);
+  ProbeStage(base, kDelivery);
+}
+
+void NoteMounted(uint32_t object) {
+  if (!Enabled() || !in_display) return;
+  ++mounted;
+  ++mounts;
+  if (!live_set.count(object)) ++mounted_outside;
 }
 
 void NoteVertexTexture(const std::array<uint32_t, 6>& d) {
@@ -273,26 +363,9 @@ using namespace gpu::motion;
 REX_HOOK_RAW(sub_8265A058) { Display(ctx, base); }
 REX_HOOK_RAW(sub_8267A2A0) {
   if (Enabled()) ++cameras;
+  ProbeStage(base, kCameraEntry);
   __imp__sub_8267A2A0(ctx, base);
-}
-REX_HOOK_RAW(sub_825E2A08) {
-  if (Enabled() && in_display) {
-    const uint32_t holder = ctx.r3.u32, count = Get32(base, holder + 8), array = Get32(base, holder + 4);
-    for (uint32_t i = 0; array && i < count && i < 65536; ++i) {
-      const uint32_t object = Get32(base, array + 4 * i);
-      if (!object) continue;
-      const uint32_t flags = Get32(base, object + 4);
-      if (!(flags & 0x00040000) || (flags & 0x00200004)) continue;
-      ++mounted;
-      ++mounts;
-      if (!live_set.count(object)) ++mounted_outside;
-    }
-  }
-  __imp__sub_825E2A08(ctx, base);
-}
-REX_HOOK_RAW(sub_8259FF40) {
-  __imp__sub_8259FF40(ctx, base);
-  if (Enabled()) StageHash(base, kDelivered);
+  ProbeStage(base, kCameraExit);
 }
 REX_HOOK_RAW(sub_820FC008) {
   if (Enabled()) StageHash(base, kListsIn);

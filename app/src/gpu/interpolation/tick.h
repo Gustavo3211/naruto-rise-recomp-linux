@@ -45,6 +45,8 @@ struct Frame {
   uint64_t skipped = 0;   // Gated iterations without a tick.
 };
 const Frame& Current();
+// Inside the main step of an iteration the gate decides.
+bool InGatedStep();
 // The label of the window title; empty when the mode is off.
 const char* Label();
 }  // namespace gpu::tick

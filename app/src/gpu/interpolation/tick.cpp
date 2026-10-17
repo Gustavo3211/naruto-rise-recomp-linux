@@ -1,5 +1,6 @@
 // The logic tick of the engine at a free frame rate (tick.h).
 #include "gpu/interpolation/tick.h"
+#include "gpu/interpolation/transforms.h"
 #include "gpu/common/guest_memory.h"
 #include "gpu/d3d/d3d.h"
 #include "gpu/diagnostics/diagnostics.h"
@@ -36,7 +37,8 @@ uint32_t rate = 0;
 bool switched_off = false, f8_down = false;
 // Main thread.
 Frame frame;
-bool decided = false, started = false;
+bool decided = false, started = false, in_step = false;
+uint32_t frames_since_tick = 0;
 int64_t frequency = 0, last = 0;
 double debt = 0;  // Real time owed to the game, seconds.
 uint64_t capped = 0;  // Iterations whose debt reached two periods (the game behind the real time).
@@ -87,6 +89,7 @@ void Decide(uint8_t* base) {
     frame.alpha = 1.0f;
     started = false;
     debt = 0;
+    frames_since_tick = 0;
   } else {
     // A new run of the gate starts with a tick; then the real time since the
     // previous iteration is owed. A tick is due within half a frame of its
@@ -101,10 +104,19 @@ void Decide(uint8_t* base) {
     if (frame.tick) {
       debt -= period;
       ++frame.ticks;
+      frames_since_tick = 0;
     } else {
       ++frame.skipped;
+      ++frames_since_tick;
     }
-    frame.alpha = float(std::clamp(debt / double(period), 0.0, 1.0));
+    // The frames are presented at the limiter's steady rate, not when their
+    // iteration starts (the delivery waits for the render thread): the alpha
+    // follows the frames since the tick, and the real time only when a frame
+    // is more than half a frame off its slot (a slow frame).
+    const double real = debt / double(period);
+    const double paced = double(frames_since_tick) * frame_period / double(period);
+    const double alpha = std::fabs(paced - real) <= 0.5 * frame_period / double(period) ? paced : real;
+    frame.alpha = float(std::clamp(alpha, 0.0, 1.0));
   }
   last = now.QuadPart;
   ++window_iterations;
@@ -161,10 +173,13 @@ uint32_t FrameRate() {
 
 const Frame& Current() { return frame; }
 
+bool InGatedStep() { return in_step; }
+
 const char* Label() {
   if (!Enabled()) return "";
   if (switched_off) return "F8: 1/60 s";
-  return frame.gate ? "F8: ticks" : "F8: ticks (fora)";
+  if (!frame.gate) return "F8: ticks (fora)";
+  return interpolation::Enabled() ? "F8: interpolado" : "F8: ticks";
 }
 
 // The three calls of the main loop.
@@ -192,8 +207,10 @@ void MainStep(PPCContext& ctx, uint8_t* base) {
     return;
   }
   Decide(base);
+  in_step = frame.gate;
   if (frame.tick) __imp__sub_82684518(ctx, base);
   else ViewBlock(ctx, base);
+  in_step = false;
   decided = false;
   motion::MainStepDone(base);
 }

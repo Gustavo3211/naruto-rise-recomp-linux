@@ -9,6 +9,7 @@
 // chunk of the dump with the free that released it.
 #include "gpu/diagnostics/crash_dump.h"
 #include "gpu/diagnostics/heap_watch.h"
+#include "gpu/interpolation/transforms.h"
 #include <windows.h>
 #include <dbghelp.h>
 #include <rex/hook.h>
@@ -111,5 +112,6 @@ extern "C" void __imp__sub_820C0018(PPCContext& __restrict, uint8_t*);
 REX_HOOK_RAW(sub_820C0018) {
   auto* state = rex::runtime::ThreadState::Get();
   gpu::crash_dump::NoteFree(ctx.r3.u32, ctx.r4.u32, ctx.r5.u32, ctx.r6.u32, ctx.lr, state ? state->thread_id() : 0);
+  gpu::interpolation::NoteFree(ctx.r4.u32);  // The tracks of the state interpolation.
   __imp__sub_820C0018(ctx, base);
 }
