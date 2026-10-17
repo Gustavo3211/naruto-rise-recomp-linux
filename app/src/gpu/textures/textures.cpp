@@ -34,6 +34,7 @@
 #include "gpu/d3d/device.h"
 #include "gpu/d3d/frame.h"
 #include "gpu/diagnostics/measure.h"
+#include "gpu/diagnostics/motion.h"
 #include "gpu/common/guest_memory.h"
 #include "gpu/common/hash.h"
 #include "gpu/settings.h"
@@ -716,6 +717,7 @@ bool BindTexture(uint8_t* base, const ShaderSampler& sampler, bool vertex, bool 
     }
   }
   out = b.t;
+  if (vertex && motion::Enabled()) motion::NoteVertexTexture(fetch_shadow.dwords[reg]);  // The bone palettes.
   if (b.t.resolved) return true;
   TextureEntry& e = *b.entry;
   e.bound.store(true, std::memory_order_relaxed);

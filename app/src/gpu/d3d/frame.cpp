@@ -38,6 +38,7 @@
 #include "gpu/diagnostics/frame_trace.h"
 #include "gpu/diagnostics/start_evidence.h"
 #include "gpu/diagnostics/frame_capture.h"
+#include "gpu/interpolation/tick.h"
 #include "gpu/diagnostics/measure.h"
 #include "gpu/diagnostics/frame_state.h"
 #include "gpu/diagnostics/sampler.h"
@@ -126,14 +127,14 @@ uint64_t dropped_sync_interrupts = 0;  // Render thread only.
 struct SwapLimiter {
   HANDLE timer = nullptr;
   int64_t frequency = 0, next = 0;
-  uint32_t interval = 0;
+  uint32_t interval = 0, rate = 0;  // rate: the frame rate of the state interpolation mode, else 0.
   uint64_t paced = 0, waited = 0, late = 0, max_late_us = 0, timer_failures = 0;
 } swap_limiter;
 std::string LimiterSummary() {
   const auto& l = swap_limiter;
-  return fmt::format("{{\"interval\":{},\"paced\":{},\"waited\":{},\"late\":{},\"max_late_us\":{},"
-                     "\"timer_failures\":{},\"period\":\"interval/60 s\"}}", l.interval, l.paced, l.waited, l.late,
-                     l.max_late_us, l.timer_failures);
+  return fmt::format("{{\"interval\":{},\"rate\":{},\"paced\":{},\"waited\":{},\"late\":{},\"max_late_us\":{},"
+                     "\"timer_failures\":{},\"period\":\"{}\"}}", l.interval, l.rate, l.paced, l.waited, l.late,
+                     l.max_late_us, l.timer_failures, l.rate ? "1/rate s" : "interval/60 s");
 }
 // Frame-time meter in the window title: fps, mean
 // and max frame time of the last half second, measured between the ends of
@@ -176,7 +177,8 @@ void MeterSwap() {
   auto* runtime = rex::Runtime::instance();
   auto* app = runtime ? runtime->app_context() : nullptr;
   if (!hwnd || !app) return;
-  app->CallInUIThreadDeferred([hwnd, fps, mean_ms, max_ms] {
+  const std::string mode = gpu::tick::Label();  // REX_NATIVE_STATE_INTERPOLATION.
+  app->CallInUIThreadDeferred([hwnd, fps, mean_ms, max_ms, mode] {
     static std::wstring base_title;  // UI thread only.
     static bool title_read = false;
     if (!title_read) {
@@ -187,11 +189,16 @@ void MeterSwap() {
     }
     wchar_t text[400]{};
     swprintf_s(text, L"%s | %.1f fps | %.1f ms (max %.1f)", base_title.c_str(), fps, mean_ms, max_ms);
+    if (!mode.empty()) {
+      wcscat_s(text, L" | ");
+      wcscat_s(text, std::wstring(mode.begin(), mode.end()).c_str());
+    }
     SetWindowTextW(hwnd, text);
   });
 }
 // The interval the own Swap is paced at when it is not the title's: 1 with the
-// unlock_fps option (settings.h), or the diagnostic REX_NATIVE_SWAP_INTERVAL
+// unlock_fps option (settings.h) or the state interpolation mode (tick.h, when
+// its gate is switched off by F8), or the diagnostic REX_NATIVE_SWAP_INTERVAL
 // (1..4), which wins when set. 0 keeps the title's +13580.
 uint32_t ForcedSwapInterval() {
   static const uint32_t environment = [] {
@@ -200,7 +207,7 @@ uint32_t ForcedSwapInterval() {
     return n >= 1 && n <= 4 ? uint32_t(n) : 0u;
   }();
   if (environment) return environment;
-  return CurrentSettings().unlock_fps ? 1u : 0u;
+  return CurrentSettings().unlock_fps || tick::Enabled() ? 1u : 0u;
 }
 // The engine's time update (826ACFC0, main thread,
 // r3 = the time structure whose pointer is at 82C0F080) measures the dt from
@@ -255,7 +262,10 @@ void TimeStepHook(PPCContext& ctx, uint8_t* base) {
   if (!time) return;
   const uint32_t context = Get32(base, 0x82C0F008);
   const uint32_t title_interval = context ? Get32(base, context + 448) : 0;
-  const uint32_t forced = ForcedSwapInterval();
+  // The state interpolation mode (tick.h) owns the time: the step stays the
+  // title's, and a value written while its gate was off (F8) goes back to it.
+  const bool interpolation = tick::Owning();
+  const uint32_t forced = interpolation ? 0u : ForcedSwapInterval();
   const uint32_t fixed = Get32(base, time + 72);
   float dt_fixed = GetFloat(base, time + 76);
   ++p.calls;
@@ -265,6 +275,13 @@ void TimeStepHook(PPCContext& ctx, uint8_t* base) {
   bool owned = false;
   if (fixed) {
     ++p.fixed_calls;
+    if (interpolation && p.owned_time == time && p.written > 0 && title_interval >= 1 && title_interval <= 4 &&
+        std::isfinite(dt_fixed) && std::fabs(dt_fixed - p.written) <= p.written * 0.01f) {
+      dt_fixed = float(title_interval) / 60.0f;
+      PutFloat(base, time + 76, dt_fixed);
+      ++p.rewrites;
+      rewritten = true;
+    }
     if (forced && p.rewrite && title_interval >= 1 && title_interval <= 4 && forced != title_interval) {
       const float title_dt = float(title_interval) / 60.0f, forced_dt = float(forced) / 60.0f;
       auto matches = [](float a, float b) { return std::fabs(a - b) <= b * 0.01f; };
@@ -319,11 +336,11 @@ void TimeStepHook(PPCContext& ctx, uint8_t* base) {
         "\"scale\":{:.4f},\"title_interval\":{},\"forced_interval\":{},\"rewritten\":{},\"rewrites\":{},"
         "\"fixed_calls\":{},\"foreign_fixed\":{},\"changed\":{},\"adaptive\":{},\"step_units\":{},"
         "\"adaptive_calls\":{},\"multiple_steps\":{},\"debt_ms\":{:.3f},\"max_debt_ms\":{:.3f},"
-        "\"real_s\":{:.3f},\"simulated_s\":{:.3f}",
+        "\"real_s\":{:.3f},\"simulated_s\":{:.3f},\"interpolation\":{}",
         p.calls, fixed, finite(dt_fixed), finite(GetFloat(base, time + 64)), finite(GetFloat(base, time + 68)),
         finite(GetFloat(base, time + 80)), finite(GetFloat(base, time + 88)), title_interval, forced, rewritten,
         p.rewrites, p.fixed_calls, p.foreign_fixed, changed, p.adaptive, step_units, p.adaptive_calls,
-        p.multiple_steps, p.debt * 1e3, p.max_debt * 1e3, p.real_s, p.simulated_s));
+        p.multiple_steps, p.debt * 1e3, p.max_debt * 1e3, p.real_s, p.simulated_s, interpolation));
   }
 }
 void PaceSwap(PPCContext& ctx, uint8_t* base, uint32_t dev) {
@@ -333,9 +350,11 @@ void PaceSwap(PPCContext& ctx, uint8_t* base, uint32_t dev) {
   // paces the own Swap at that interval instead of the title's +13580, which
   // stays untouched (the title keeps requesting 2 in the menus and the open
   // world, 1 in the fight). The engine's fixed step follows it (TimeStepHook).
+  // The state interpolation mode (tick.h) paces at its frame rate instead.
   const uint32_t forced_interval = ForcedSwapInterval();
+  const uint32_t rate = tick::Owning() ? tick::FrameRate() : 0u;
   uint32_t interval = forced_interval ? forced_interval : Get32(base, dev + 13580);
-  if (interval < 1 || interval > 4) {  // Clamped to the covered range.
+  if (!rate && (interval < 1 || interval > 4)) {  // Clamped to the covered range.
     UncoveredOperation(ctx, fmt::format("Swap-presentation-interval-uncovered-{}", interval));
     interval = std::clamp(interval, 1u, 4u);
   }
@@ -346,9 +365,10 @@ void PaceSwap(PPCContext& ctx, uint8_t* base, uint32_t dev) {
     l.timer = CreateWaitableTimerExW(nullptr, nullptr, CREATE_WAITABLE_TIMER_HIGH_RESOLUTION, TIMER_ALL_ACCESS);
     if (!l.timer) StopInOrder(ctx, "Swap-limiter-timer", 88);
   }
-  if (interval != l.interval) l.next = 0;  // A new interval starts a new phase.
+  if (interval != l.interval || rate != l.rate) l.next = 0;  // A new period starts a new phase.
   l.interval = interval;
-  const int64_t period = int64_t(interval) * l.frequency / 60;
+  l.rate = rate;
+  const int64_t period = rate ? l.frequency / rate : int64_t(interval) * l.frequency / 60;
   LARGE_INTEGER now{};
   QueryPerformanceCounter(&now);
   ++l.paced;
