@@ -46,6 +46,49 @@ bool CopyRecursive(const std::filesystem::path& source,
   return true;
 }
 
+void AppendUtf8(std::string& out, char32_t c) {
+  if (c < 0x80) {
+    out += static_cast<char>(c);
+  } else if (c < 0x800) {
+    out += static_cast<char>(0xC0 | (c >> 6));
+    out += static_cast<char>(0x80 | (c & 0x3F));
+  } else if (c < 0x10000) {
+    out += static_cast<char>(0xE0 | (c >> 12));
+    out += static_cast<char>(0x80 | ((c >> 6) & 0x3F));
+    out += static_cast<char>(0x80 | (c & 0x3F));
+  } else {
+    out += static_cast<char>(0xF0 | (c >> 18));
+    out += static_cast<char>(0x80 | ((c >> 12) & 0x3F));
+    out += static_cast<char>(0x80 | ((c >> 6) & 0x3F));
+    out += static_cast<char>(0x80 | (c & 0x3F));
+  }
+}
+
+// The display name in a content header the game wrote when it installed the
+// content (the SDK's XCONTENT_AGGREGATE_DATA: after the device ID and the
+// content type, 128 big-endian UTF-16 units). Empty when it cannot be read.
+std::string ReadDisplayName(const std::filesystem::path& header) {
+  constexpr size_t kOffset = 8;
+  constexpr size_t kUnits = 128;
+  unsigned char raw[kOffset + kUnits * 2];
+  std::ifstream file(header, std::ios::binary);
+  if (!file.read(reinterpret_cast<char*>(raw), sizeof(raw))) return {};
+  std::string name;
+  for (size_t i = 0; i < kUnits; ++i) {
+    char32_t unit = (raw[kOffset + i * 2] << 8) | raw[kOffset + i * 2 + 1];
+    if (unit == 0) break;
+    if (unit >= 0xD800 && unit < 0xDC00 && i + 1 < kUnits) {
+      const char32_t low = (raw[kOffset + (i + 1) * 2] << 8) | raw[kOffset + (i + 1) * 2 + 1];
+      if (low >= 0xDC00 && low < 0xE000) {
+        unit = 0x10000 + ((unit - 0xD800) << 10) + (low - 0xDC00);
+        ++i;
+      }
+    }
+    AppendUtf8(name, unit);
+  }
+  return name;
+}
+
 }  // namespace
 
 std::filesystem::path GetUserDataRoot() {
@@ -163,9 +206,12 @@ std::vector<ContentInfo> ListInstalledDlc() {
   std::error_code ec;
   if (!std::filesystem::is_directory(root, ec)) return result;
 
+  const auto headers = root.parent_path() / "Headers" / kMarketplaceContentType;
   for (const auto& entry : std::filesystem::directory_iterator(root, ec)) {
     if (entry.is_directory(ec)) {
-      result.push_back({entry.path().filename().string(), entry.path(), false});
+      const std::string folder = entry.path().filename().string();
+      std::string name = ReadDisplayName(headers / (folder + ".header"));
+      result.push_back({name.empty() ? folder : std::move(name), entry.path(), false});
     }
   }
   std::sort(result.begin(), result.end(),

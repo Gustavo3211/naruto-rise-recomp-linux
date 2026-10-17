@@ -179,6 +179,12 @@ int main(int argc, char* argv[]) {
   ImGui_ImplDX11_Init(g_pd3dDevice, g_pd3dDeviceContext);
 #endif
 
+#if defined(_WIN32)
+  LauncherUI ui(window, base_dir, {cover_tex.srv, cover_tex.width, cover_tex.height});
+#else
+  LauncherUI ui(window, base_dir, {});
+#endif
+
   bool running = true;
   bool request_launch = false;
   std::string status_msg = "";
@@ -210,12 +216,7 @@ int main(int argc, char* argv[]) {
     ImGui_ImplSDL3_NewFrame();
     ImGui::NewFrame();
 
-#if defined(_WIN32)
-    LauncherUI::Render(window, base_dir, config, request_launch, status_msg, cover_tex.srv,
-                       cover_tex.width, cover_tex.height);
-#else
-    LauncherUI::Render(window, base_dir, config, request_launch, status_msg, nullptr);
-#endif
+    ui.Render(config, request_launch, status_msg);
 
     ImGui::Render();
 #if defined(_WIN32)
