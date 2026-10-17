@@ -11,6 +11,7 @@ This document lists available tests and the verification workflow. The existence
 | `packaging/tests/test_game_paths.cpp` | Launcher game data discovery |
 | `packaging/tests/test_setup_helper.py` | XEX/Title ID validation, synthetic ISOs, and extraction helper |
 | `packaging/tests/test_setup_inno.py` | Installation, updates between releases, legacy/portable migration, version checks, and uninstall preservation in temporary directories |
+| `packaging/tests/test_dlc_runtime.py` | Opt-in startup test of the base game and each character DLC engine; needs user-supplied game files and content ([DLCs](dlc.md#6-startup-regression-test)) |
 | `launcher/tests/test_config_manager.cpp` | Independent game/interface language persistence and configuration compatibility |
 | `launcher/tests/test_localization.cpp` | Seven complete translations, language order, codes, and formatting placeholders |
 
@@ -45,6 +46,7 @@ See the test sources for requirements and compiler paths. ISO fixtures are synth
 - Switch all seven launcher languages, including Cyrillic text, graphics settings, and 16:9/ultrawide aspect ratios.
 - Confirm Portuguese and Russian are interface options only and the five native game language selections persist independently.
 - Import DLC and launch a build containing `narutorise_ai2c2.dll`.
+- For builds with the native renderer: launch once with each renderer, check that the options of the other renderer are greyed out, and play with the frame rate at 30, 60, and 120.
 - Check saves, logs, and cache in the documented locations.
 - Uninstall and confirm user data preservation.
 

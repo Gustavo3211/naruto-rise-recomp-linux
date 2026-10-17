@@ -15,8 +15,12 @@
 | Missing generated header or DLL target | Run code generation before configuring the application and reconfigure after changing modules |
 | Failure to copy `extract-xiso.exe` | Run `setup.ps1`; the complete build includes the installer helper |
 | Out of memory during compilation | Reduce concurrency: `cmake --build app/out/build/win-amd64-release --parallel 2` |
-| Packaging reports a missing cache | Copy `555307E5.xsh` and `555307E5.rtv.d3d12.xpso` from `Documents/narutorise/cache/shaders/shareable/` to `packaging/private/shader_cache/` (or set `NARUTORISE_SHADER_STORAGE_DIR`), then package again |
+| Packaging reports a missing cache | Copy `555307E5.xsh` and `555307E5.rtv.d3d12.xpso` from `Documents/narutorise/cache/shaders/shareable/` to `packaging/private/shader_cache/` (or configure the application with `-DNARUTORISE_SHADER_STORAGE_DIR=<folder>`), then package again |
 | Debug CRT dependency in a release | Rebuild the SDK and application in Release; do not reuse Debug DLLs |
+| `Native bootstrap requires NATIVE_RENDERER_PLUME_SOURCE` | Pass a Plume checkout with `-DNATIVE_RENDERER_PLUME_SOURCE=<folder>`; see [Native renderer](build-and-run.md#native-renderer-optional) |
+| `plume source must be clean at ...` or `allocator source must be clean at ...` | Check out the pinned commits in Plume and its `contrib/D3D12MemoryAllocator` submodule, without local changes |
+| `The shader cache of the native renderer needs .../xeshader.sdb` | Point `NARUTORISE_GAME_DIR` at the folder with your game files (for example `game_root/`) |
+| `The shader cache of the native renderer needs .../dxc.exe` | Fetch the XenosRecomp submodules: `git submodule update --init --recursive` |
 
 ## Runtime issues
 
@@ -30,7 +34,7 @@ Keep runtime and module binaries alongside the game, together with launcher asse
 
 ### Stretched image on a 16:9 monitor
 
-The source TOML uses `ultrawide_target_aspect = 2.3889`. Choose 16:9 in the launcher or set `0.0`. For ultrawide, confirm that the SDK was built with `ultrawide-presenter.patch` applied.
+An ultrawide aspect ratio is selected. Choose 16:9 in the launcher or set `ultrawide_target_aspect = 0.0`, the default. For ultrawide, confirm that the SDK was built with `ultrawide-presenter.patch` applied.
 
 ### `projection constant mismatch` in the log
 
@@ -39,6 +43,20 @@ The ultrawide patch found an unexpected value at the projection address. Check t
 ### Black flickering or graphics issues
 
 Check `execute_unclipped_draw_vs_on_cpu = true`, `d3d12_readback_resolve = true`, and the SDK patches used for the build. For low performance, reduce the scale in the launcher and compare using the `F1` overlay. The bundled cache does not guarantee that shader compilation will never occur during gameplay.
+
+### Native renderer
+
+| Symptom | What to check |
+| --- | --- |
+| The launcher has no **Renderer** option | The build does not include the native renderer; see [Build and run](build-and-run.md#native-renderer-optional) |
+| Bars on an ultrawide monitor | Expected: the native renderer stays at 16:9 |
+| `F1` shows nothing | The overlays belong to Xenos; the native renderer shows the frame rate in the window title |
+| The frame rate stays at 30 in the open world or 60 in fights | Check the **Frame rate** slider; with VSync on, the rate does not exceed the monitor's refresh rate. Rates just above the game's step follow the step, see [Frame rate](renderers.md#frames-between-the-logic-steps) |
+| The rate varies at 120 FPS | Busy areas may not reach 120; choose 60 |
+| An object or effect is missing for a moment | Its pipeline is compiling the first time it appears |
+| Closing takes a few seconds | A known issue, mostly with a controller connected or right after a fight |
+
+See the [known issues](renderers.md#known-issues). When a problem appears only with the native renderer, check whether it also happens with `frame_rate = 30` and with Xenos, and mention the result in the report.
 
 ### Preferences reset after a build
 
@@ -59,7 +77,8 @@ log_level = "debug"
 When reporting a problem, include:
 
 - build/commit, Windows version, CPU, GPU, and driver version;
-- guest and host FPS from the `F1` overlay (the guest rate drives game speed; the host rate is context);
+- the renderer (Xenos or native) and, with the native renderer, the frame rate;
+- guest and host FPS from the `F1` overlay (the guest rate drives game speed; the host rate is context), or the rate in the window title with the native renderer;
 - reproduction steps and expected result;
 - game revision and DLC or Title Update usage;
 - resolution, aspect ratio, and internal scale;

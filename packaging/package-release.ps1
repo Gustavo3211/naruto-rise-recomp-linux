@@ -231,7 +231,7 @@ FXAA anti-aliasing, AMD FidelityFX CAS/FSR post-processing, anisotropic
 filtering, aspect ratios 16:9 / 21:9 / 32:9, and FPS overlay (F1).
 SDL controller support includes Xbox and PlayStation controllers.
 Microsoft Visual C++ 2015-2022 Redistributable (x64) is required by the game/launcher.
-Alt+F4 closes the game; F11 toggles fullscreen.
+Alt+F4 closes the game.
 
 Game files are not included. License and third-party notices: licenses\README.txt.
 "@
