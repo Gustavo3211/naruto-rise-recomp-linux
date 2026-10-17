@@ -410,11 +410,13 @@ void NoteFree(uint32_t pointer) {
 using namespace gpu;
 REX_HOOK_RAW(sub_82684050) {
   motion::ViewStart(base, ctx.r3.u32);  // The view probe, before the writes.
+  tick::BeginView(base);
   gpu::interpolation::ViewStart(base);
   __imp__sub_82684050(ctx, base);
 }
 REX_HOOK_RAW(sub_8259FF40) {
   __imp__sub_8259FF40(ctx, base);
+  tick::EndView(base);
   gpu::interpolation::Restore(base);
   motion::Delivered(base);
 }

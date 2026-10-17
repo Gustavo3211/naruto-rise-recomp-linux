@@ -24,6 +24,19 @@
 // off, the frame is the 1/60 s simulation of unlock_fps (every iteration a
 // tick, +76 rewritten). Changes and every 300th iteration are recorded as
 // native-d3d-tick (diagnostics). Main thread.
+//
+// The time of the view block: the display and the effects of the view advance
+// some state by the engine's dt (+56 in microseconds, +64 scaled, +68 raw):
+// the passes of 8259BA90 under the display, the step dust among them. The
+// engine's time is updated only in the ticks, so between them the view block
+// would see the tick's dt in every frame, twice per tick at 60 Hz. In the
+// iterations the gate decides, from the view block's start (82684050) to the
+// delivery (8259FF40), the three fields are scaled to the advance of the
+// image's time (ticks + alpha) since the last view block, in periods: half
+// the tick's dt per frame at 60 Hz, a quarter at 120 Hz; then the tick's
+// values come back. The effects' work thread gets its dt as an argument
+// (826AB438). REX_NATIVE_INTERPOLATION_VIEW_TIME=0 leaves the tick's dt;
+// =tick gives the tick's dt in the ticks and 0 between them (a probe).
 #include <cstdint>
 
 namespace gpu::tick {
@@ -49,4 +62,8 @@ const Frame& Current();
 bool InGatedStep();
 // The label of the window title; empty when the mode is off.
 const char* Label();
+// The view block's start (82684050) and the delivery's end (8259FF40), main
+// thread: the engine's dt of the view block (above).
+void BeginView(uint8_t* base);
+void EndView(uint8_t* base);
 }  // namespace gpu::tick
