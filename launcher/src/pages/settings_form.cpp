@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cfloat>
 #include <cstdio>
+#include <cstdlib>
 #include <iterator>
 
 #include "config_manager.h"
@@ -70,6 +71,21 @@ bool OptionList::Checkbox(const Option& option, bool& value) {
 }
 
 bool OptionList::Slider(const Option& option, int& value, int min, int max) {
+  return Track(option, value, min, max, value);
+}
+
+bool OptionList::Slider(const Option& option, int& value, std::span<const int> stops) {
+  if (stops.empty()) return false;
+  int index = 0;
+  for (int i = 1; i < static_cast<int>(stops.size()); ++i) {
+    if (std::abs(stops[i] - value) < std::abs(stops[index] - value)) index = i;
+  }
+  if (!Track(option, index, 0, static_cast<int>(stops.size()) - 1, stops[index])) return false;
+  value = stops[index];
+  return true;
+}
+
+bool OptionList::Track(const Option& option, int& value, int min, int max, int shown) {
   if (!BeginRow(option)) return false;
   LabelColumn(option);
   // The value (or the tag, when the renderer does not use the option) takes a
@@ -103,7 +119,7 @@ bool OptionList::Slider(const Option& option, int& value, int min, int max) {
   draw->AddRectFilled(ImVec2(x - 6, y - 10), ImVec2(x + 6, y + 10), ImGui::GetColorU32(ImGuiCol_Text), 4);
   if (used) {
     char text[16];
-    std::snprintf(text, sizeof(text), "%d", value);
+    std::snprintf(text, sizeof(text), "%d", shown);
     draw->AddText(ImVec2(item_max.x + 12, y - ImGui::GetFontSize() / 2), ImGui::GetColorU32(ImGuiCol_TextDisabled), text);
   } else {
     DrawTag(option, item_max.x + 12, false);

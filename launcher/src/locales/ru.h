@@ -146,8 +146,8 @@ inline constexpr const char* kRu[] = {
     "Мультисэмплинг 3D-сцен игры. Для 8x нужна более мощная видеокарта.",  // MsaaDescription
     "Сглаживание прозрачности",  // TransparencyAaLabel
     "Сглаживает края листвы, заборов и других вырезанных текстур (alpha to coverage).",  // TransparencyAaDescription
-    "60 FPS",  // UnlockFpsLabel
-    "Меню и открытый мир работают на 60 FPS вместо 30 (бои уже идут на 60). Нужен более быстрый процессор.",  // UnlockFpsDescription
+    "Частота кадров",  // FrameRateLabel
+    "30 — исходная частота игры. Выше логика игры сохраняет свой темп, а промежуточные кадры интерполируются. С VSync частота не выше частоты монитора; высокие значения требуют быстрого процессора.",  // FrameRateDescription
     "Яркость",  // BrightnessLabel
     "50 — исходная яркость игры.",  // BrightnessDescription
     "Задержка кадров",  // FrameLatencyLabel

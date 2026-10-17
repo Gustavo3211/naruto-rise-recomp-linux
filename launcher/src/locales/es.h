@@ -146,8 +146,8 @@ inline constexpr const char* kEs[] = {
     "Multimuestreo de las escenas 3D del juego. 8x requiere una GPU más potente.",  // MsaaDescription
     "AA de transparencias",  // TransparencyAaLabel
     "Suaviza los bordes del follaje, las vallas y otras texturas recortadas (alpha to coverage).",  // TransparencyAaDescription
-    "60 FPS",  // UnlockFpsLabel
-    "Ejecuta los menús y el mundo abierto a 60 FPS en lugar de 30 (los combates ya van a 60). Requiere una CPU más rápida.",  // UnlockFpsDescription
+    "Tasa de fotogramas",  // FrameRateLabel
+    "30 es la tasa original del juego. Por encima, la lógica mantiene su ritmo y los fotogramas intermedios se interpolan. Con VSync activado, se detiene en la del monitor; las tasas altas requieren una CPU más rápida.",  // FrameRateDescription
     "Brillo",  // BrightnessLabel
     "50 es el brillo original del juego.",  // BrightnessDescription
     "Latencia de fotogramas",  // FrameLatencyLabel

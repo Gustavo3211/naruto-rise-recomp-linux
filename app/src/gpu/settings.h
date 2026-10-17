@@ -45,6 +45,9 @@ struct Settings {
   // and rewrites that fixed step to 1/60 s (d3d/frame.cpp). The fight already
   // runs at 60.
   bool unlock_fps = false;            // unlock_fps
+  // Own option: above 30, the
+  // state interpolation (gpu/interpolation/tick.h) at that frame rate.
+  uint32_t frame_rate = 30;           // frame_rate: 30 (the game's) to 240
   // The app's option for both renderers (graphics_device.cpp): the adapter by
   // its name; empty keeps the one with the most dedicated video memory.
   std::string graphics_device;        // graphics_device

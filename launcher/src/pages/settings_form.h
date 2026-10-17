@@ -43,6 +43,9 @@ class OptionList {
   bool Checkbox(const Option& option, bool& value);
   // A thin track filled up to a handle, with the value beside it.
   bool Slider(const Option& option, int& value, int min, int max);
+  // The same track over a set of values in ascending order: the handle sits on
+  // the one nearest to `value` and moves from one to the next.
+  bool Slider(const Option& option, int& value, std::span<const int> stops);
   // A value that is shown, not edited.
   void Text(const Option& option, const char* text);
 
@@ -53,6 +56,8 @@ class OptionList {
  private:
   bool BeginRow(const Option& option);
   void EndRow(const Option& option);
+  // The track of both sliders: `value` from min to max, `shown` beside it.
+  bool Track(const Option& option, int& value, int min, int max, int shown);
   void LabelColumn(const Option& option);
   // The "only in one renderer" tag of an unavailable option, beside the last item.
   void DrawTag(const Option& option, float x, bool right_aligned) const;

@@ -49,6 +49,15 @@ REXCVAR_DEFINE_BOOL(unlock_fps, false, "narutorise/Graphics",
                     "60 fps in the menus and the open world of the native renderer instead of 30 "
                     "(the fights already run at 60)")
     .lifecycle(rex::cvar::Lifecycle::kRequiresRestart);
+// The frame rate of the native renderer: above 30, the state interpolation
+// (gpu/interpolation/tick.h) keeps the game's logic at its own step and draws
+// the frames between the steps. 30 keeps the game's frame rate; the product's
+// configuration and the launcher choose 60.
+REXCVAR_DEFINE_INT32(frame_rate, 30, "narutorise/Graphics",
+                     "Frame rate of the native renderer: 30 keeps the game's; 60 to 240 interpolate the frames "
+                     "between the game's logic steps")
+    .range(30, 240)
+    .lifecycle(rex::cvar::Lifecycle::kRequiresRestart);
 REXCVAR_DEFINE_DOUBLE(internal_resolution_scale, 0.0, "narutorise/Graphics",
                       "Internal resolution scale of the native renderer, 1 to 4 with fractions "
                       "(0 = resolution_scale)")
@@ -125,11 +134,11 @@ rex::cvar::FlagEntry StringOption(const char* name, std::string& value, std::vec
   return entry;
 }
 
-// The options of the record: the first fourteen defined in the app, the rest by the presenter.
+// The options of the record: the first fifteen defined in the app, the rest by the presenter.
 constexpr std::string_view kOptions[] = {
     "vsync", "anisotropic_override", "swap_post_effect", "resolution_scale", "draw_resolution_scale_x",
     "draw_resolution_scale_y", "max_frame_latency", "triple_buffering", "brightness", "internal_resolution_scale",
-    "msaa_samples", "transparency_antialiasing", "unlock_fps", "graphics_device",
+    "msaa_samples", "transparency_antialiasing", "unlock_fps", "frame_rate", "graphics_device",
     "d3d12_allow_variable_refresh_rate_and_tearing", "present_effect", "present_cas_additional_sharpness",
     "present_fsr_sharpness_reduction", "present_fsr_max_upsampling_passes"};
 
@@ -233,6 +242,7 @@ void LoadSettings() {
   s.msaa_samples = msaa >= 8 ? 8 : msaa >= 4 ? 4 : msaa >= 2 ? 2 : 0;
   s.transparency_antialiasing = REXCVAR_GET(transparency_antialiasing);
   s.unlock_fps = REXCVAR_GET(unlock_fps);
+  s.frame_rate = uint32_t(std::clamp(REXCVAR_GET(frame_rate), 30, 240));
   s.graphics_device = REXCVAR_GET(graphics_device);
   if (rex::cvar::GetFlagInfo("d3d12_allow_variable_refresh_rate_and_tearing"))
     s.allow_tearing = rex::cvar::Query<bool>("d3d12_allow_variable_refresh_rate_and_tearing");
@@ -254,11 +264,11 @@ void LoadSettings() {
       "\"present_effect_requested\":{},\"cas_additional_sharpness\":{},\"fsr_sharpness_reduction\":{},"
       "\"swap_post_effect\":\"{}\",\"resolution_scale\":[{},{}],\"max_frame_latency\":{},\"triple_buffering\":{},"
       "\"brightness\":{},\"fsr_max_passes\":{},\"msaa_samples\":{},\"transparency_antialiasing\":{},"
-      "\"unlock_fps\":{},\"graphics_device\":{},\"sources\":{{{}}}",
+      "\"unlock_fps\":{},\"frame_rate\":{},\"graphics_device\":{},\"sources\":{{{}}}",
       s.vsync, s.allow_tearing, s.anisotropic_override, Name(s.present_effect), Quoted(requested),
       s.cas_additional_sharpness, s.fsr_sharpness_reduction, Name(s.swap_post_effect), s.resolution_scale.x,
       s.resolution_scale.y, s.max_frame_latency, s.triple_buffering, s.brightness, s.fsr_max_passes, s.msaa_samples,
-      s.transparency_antialiasing, s.unlock_fps, Quoted(s.graphics_device), sources);
+      s.transparency_antialiasing, s.unlock_fps, s.frame_rate, Quoted(s.graphics_device), sources);
 }
 const Settings& CurrentSettings() { return settings; }
 std::string SettingsEvidence() { return evidence; }

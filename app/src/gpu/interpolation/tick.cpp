@@ -6,6 +6,7 @@
 #include "gpu/diagnostics/diagnostics.h"
 #include "gpu/diagnostics/motion.h"
 #include "gpu/host/services.h"
+#include "gpu/settings.h"
 #include <windows.h>
 #include <fmt/format.h>
 #include <rex/hook.h>
@@ -33,6 +34,7 @@ constexpr uint32_t kViewsOff = 0x82C0EBB4;   // Set while a world is replaced: n
 constexpr uint32_t kWorldEffects = 0x82C0EB04;  // The argument of 826AC2E8.
 
 int enabled = -1;
+bool by_variable = false;  // The mode set by REX_NATIVE_STATE_INTERPOLATION: F8 and the title's label.
 uint32_t rate = 0;
 bool switched_off = false, f8_down = false;
 // Main thread.
@@ -109,7 +111,7 @@ void Decide(uint8_t* base) {
     frequency = f.QuadPart;
     window_start = now.QuadPart;
   }
-  const bool f8 = (GetAsyncKeyState(VK_F8) & 0x8000) != 0;
+  const bool f8 = by_variable && (GetAsyncKeyState(VK_F8) & 0x8000) != 0;
   const bool toggled = f8 && !f8_down;
   f8_down = f8;
   if (toggled) switched_off = !switched_off;
@@ -194,7 +196,8 @@ bool Gating() { return gpu::Active() && Enabled(); }
 bool Enabled() {
   if (enabled < 0) {
     const char* text = std::getenv("REX_NATIVE_STATE_INTERPOLATION");
-    enabled = text && std::string_view(text) == "1" ? 1 : 0;
+    by_variable = text && *text;
+    enabled = by_variable ? (std::string_view(text) == "1" ? 1 : 0) : CurrentSettings().frame_rate > 30 ? 1 : 0;
   }
   return enabled == 1;
 }
@@ -205,7 +208,8 @@ uint32_t FrameRate() {
   if (!rate) {
     const char* text = std::getenv("REX_NATIVE_FRAME_RATE");
     const int n = text ? std::atoi(text) : 0;
-    rate = n >= 30 && n <= 240 ? uint32_t(n) : 60u;
+    const uint32_t option = CurrentSettings().frame_rate;
+    rate = n >= 30 && n <= 240 ? uint32_t(n) : option > 30 ? option : 60u;
   }
   return rate;
 }
@@ -243,7 +247,7 @@ void EndView(uint8_t* base) {
 }
 
 const char* Label() {
-  if (!Enabled()) return "";
+  if (!Enabled() || !by_variable) return "";
   if (switched_off) return "F8: 1/60 s";
   if (!frame.gate) return "F8: ticks (fora)";
   return interpolation::Enabled() ? "F8: interpolado" : "F8: ticks";

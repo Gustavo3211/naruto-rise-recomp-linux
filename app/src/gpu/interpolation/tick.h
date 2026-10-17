@@ -18,12 +18,15 @@
 // the period is not longer than the frame (the fight at 60), every iteration
 // is a tick.
 //
-// REX_NATIVE_STATE_INTERPOLATION=1 turns the mode on. The own limiter then
-// paces at REX_NATIVE_FRAME_RATE (60 by default) and the time step stays the
-// title's (no rewrite of +76). F8 switches the gate off and on at run time:
-// off, the frame is the 1/60 s simulation of unlock_fps (every iteration a
-// tick, +76 rewritten). Changes and every 300th iteration are recorded as
-// native-d3d-tick (diagnostics). Main thread.
+// The option frame_rate above 30 (settings.h, the launcher's frame rate)
+// turns the mode on at that rate; for the boots, REX_NATIVE_STATE_INTERPOLATION
+// (1 on, 0 off) wins over it, with REX_NATIVE_FRAME_RATE for the rate (60
+// when neither gives one). The own limiter then paces at the rate and the
+// time step stays the title's (no rewrite of +76). With the mode set by the
+// variable, F8 switches the gate off and on at run time (off, the frame is the
+// 1/60 s simulation of unlock_fps: every iteration a tick, +76 rewritten) and
+// the window title shows it. Changes and every 300th iteration are recorded
+// as native-d3d-tick (diagnostics). Main thread.
 //
 // The time of the view block: the display and the effects of the view advance
 // some state by the engine's dt (+56 in microseconds, +64 scaled, +68 raw):
@@ -40,12 +43,13 @@
 #include <cstdint>
 
 namespace gpu::tick {
-// The mode is on (REX_NATIVE_STATE_INTERPOLATION=1), whatever F8 says.
+// The mode is on (frame_rate above 30, or REX_NATIVE_STATE_INTERPOLATION=1),
+// whatever F8 says.
 bool Enabled();
 // On and not switched off by F8: the limiter paces at the frame rate and the
 // engine's time step is not rewritten.
 bool Owning();
-// REX_NATIVE_FRAME_RATE (30 to 240), 60 by default.
+// REX_NATIVE_FRAME_RATE, else frame_rate above 30 (30 to 240), else 60.
 uint32_t FrameRate();
 // The current loop iteration.
 struct Frame {
@@ -60,7 +64,7 @@ struct Frame {
 const Frame& Current();
 // Inside the main step of an iteration the gate decides.
 bool InGatedStep();
-// The label of the window title; empty when the mode is off.
+// The label of the window title; empty when the mode is off or set by the option.
 const char* Label();
 // The view block's start (82684050) and the delivery's end (8259FF40), main
 // thread: the engine's dt of the view block (above).

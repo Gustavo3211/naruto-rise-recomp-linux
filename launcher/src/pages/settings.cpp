@@ -28,7 +28,9 @@ constexpr Option kAspect{TextId::AspectLabel, TextId::AspectDescription, Rendere
 constexpr Option kBrightness{TextId::BrightnessLabel, TextId::BrightnessDescription, Renderer::kNative};
 constexpr Option kVsync{TextId::VsyncLabel, TextId::VsyncDescription, Renderer::kBoth,
                         TextId::VsyncNativeDescription};
-constexpr Option kUnlockFps{TextId::UnlockFpsLabel, TextId::UnlockFpsDescription, Renderer::kNative};
+constexpr Option kFrameRate{TextId::FrameRateLabel, TextId::FrameRateDescription, Renderer::kNative};
+// 30 is the game's; the others, common monitor refresh rates.
+constexpr int kFrameRates[] = {30, 60, 75, 90, 120, 144, 165, 240};
 constexpr Option kFullscreen{TextId::FullscreenLabel, TextId::FullscreenDescription};
 
 constexpr Option kMsaa{TextId::MsaaLabel, TextId::MsaaDescription, Renderer::kNative};
@@ -141,7 +143,7 @@ void RenderDisplayGroup(OptionList& list, GameConfig& config) {
   if (list.Slider(kBrightness, brightness, 0, 100)) config.brightness = brightness / 100.0;
 
   if (list.Checkbox(kVsync, config.vsync)) config.d3d12_host_vsync = config.vsync;
-  list.Checkbox(kUnlockFps, config.unlock_fps);
+  list.Slider(kFrameRate, config.frame_rate, kFrameRates);
   list.Checkbox(kFullscreen, config.fullscreen);
 }
 
@@ -226,7 +228,8 @@ void ApplyRecommended(GameConfig& config) {
   config.present_dither = false;
   config.show_fps_overlay = false;
   config.msaa_samples = 0;
-  config.transparency_antialiasing = config.unlock_fps = config.triple_buffering = false;
+  config.transparency_antialiasing = config.triple_buffering = false;
+  config.frame_rate = 60;
   config.brightness = 0.5;
   config.internal_resolution_scale = 0;
   config.max_frame_latency = 1;

@@ -83,14 +83,28 @@ int main(int argc, char** argv) {
     // The renderer and the native renderer's options: written only when the
     // executable carries the native renderer, and kept as they are otherwise.
     Write(path, "renderer = 'native'\nmsaa_samples = 8\nbrightness = 0.7\ninternal_resolution_scale = 1.5\n"
-                "unlock_fps = true\ntransparency_antialiasing = true\nmax_frame_latency = 2\n"
+                "frame_rate = 120\ntransparency_antialiasing = true\nmax_frame_latency = 2\n"
                 "triple_buffering = true\n");
     GameConfig native;
     Require(ConfigManager::Load(path, native), "Native renderer options failed to load");
     Require(native.renderer == "native" && native.msaa_samples == 8 && native.brightness == 0.7 &&
-                native.internal_resolution_scale == 1.5 && native.unlock_fps &&
+                native.internal_resolution_scale == 1.5 && native.frame_rate == 120 &&
                 native.transparency_antialiasing && native.max_frame_latency == 2 && native.triple_buffering,
             "Native renderer options were not read");
+    // The 60 fps option from before frame_rate opens at 60; the frame rate is
+    // saved with it off, since the launcher no longer offers it.
+    Write(path, "frame_rate = 30\n");
+    GameConfig original;
+    Require(ConfigManager::Load(path, original) && original.frame_rate == 30, "frame_rate 30 was not read");
+    Write(path, "unlock_fps = true\n");
+    GameConfig unlocked;
+    Require(ConfigManager::Load(path, unlocked) && unlocked.frame_rate == 60, "unlock_fps did not open at 60");
+    unlocked.frame_rate = 144;
+    Require(ConfigManager::Save(path, unlocked), "frame_rate failed to save");
+    const auto rates = toml::parse_file(path.string());
+    Require(kNativeRendererBuilt ? rates["frame_rate"].value<int>() == 144 && rates["unlock_fps"].value<bool>() == false
+                                 : rates["unlock_fps"].value<bool>() == true,
+            "frame_rate and unlock_fps were not saved as built");
     native.renderer = "xenos";
     native.msaa_samples = 2;
     Require(ConfigManager::Save(path, native), "Native renderer options failed to save");

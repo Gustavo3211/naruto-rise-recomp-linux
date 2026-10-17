@@ -124,7 +124,8 @@ Native renderer options:
 | --- | --- | --- |
 | `msaa_samples` | `0` | MSAA of the game's multisampled targets: `0` keeps the game's 4×; `2`, `4` or `8` |
 | `transparency_antialiasing` | `false` | Alpha to coverage instead of the alpha test on foliage, fences and other cut-out textures |
-| `unlock_fps` | `false` | Menus and open world at 60 FPS instead of 30 (fights already run at 60) |
+| `frame_rate` | `30` (`60` in the shipped file and the launcher) | Frame rate: `30` keeps the game's; `60` to `240` keep the game's logic at its own step and interpolate the frames in between (the launcher's slider: 30, 60, 75, 90, 120, 144, 165, 240). With VSync on, it does not go above the monitor's refresh rate |
+| `unlock_fps` | `false` | Menus and open world at 60 FPS by running their logic at 1/60 s instead of 30 (fights already run at 60); ignored when `frame_rate` is above 30. Not in the launcher, which saves it off |
 | `brightness` | `0.5` | Output brightness; `0.5` is the game's |
 | `internal_resolution_scale` | `0.0` | Fractional internal scale from 1 to 4 (`1.5` = 1920×1080); `0` uses `resolution_scale` |
 | `max_frame_latency` | `1` | Frames queued ahead of the display (1 to 3) |
