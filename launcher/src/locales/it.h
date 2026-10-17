@@ -154,6 +154,29 @@ inline constexpr const char* kIt[] = {
     "Personalizzata (%u)",  // GameLanguageCustom
     "Applicata all'avvio del gioco. I testi e le voci disponibili dipendono dai file di gioco.",  // GameLanguageHint
     "Lingua dell'interfaccia del launcher",  // LauncherLanguageTooltip
+    "Xenos (GPU emulata)",  // RendererXenos
+    "Nativo (Direct3D 12)",  // RendererNative
+    "Xenos emula la GPU di Xbox 360 e copre tutto il gioco. Il renderer nativo disegna il gioco direttamente con Direct3D 12: più veloce e con più opzioni, ma ancora in prova in alcune parti del gioco.",  // RendererTooltip
+    "Non disponibile con il renderer nativo.",  // NativeUnavailableTooltip
+    "1920x1080 - 1,5x (Full HD)",  // Res1_5x
+    "MSAA:",  // MsaaLabel
+    "4x (originale)",  // MsaaOriginal
+    "Multicampionamento delle scene 3D del gioco. 8x richiede una GPU più potente.",  // MsaaTooltip
+    "AA della trasparenza",  // TransparencyAaLabel
+    "Ammorbidisce i bordi di fogliame, recinzioni e altre texture ritagliate (alpha to coverage).",  // TransparencyAaTooltip
+    "60 FPS",  // UnlockFpsLabel
+    "Esegue i menu e il mondo aperto a 60 FPS invece di 30 (i combattimenti sono già a 60). Richiede una CPU più veloce.",  // UnlockFpsTooltip
+    "Luminosità:",  // BrightnessLabel
+    "50 è la luminosità originale del gioco.",  // BrightnessTooltip
+    "Latenza dei fotogrammi:",  // FrameLatencyLabel
+    "1 (minima)",  // FrameLatencyLowest
+    "Fotogrammi in coda prima della visualizzazione. 1 ha il ritardo di input più basso; 2 o 3 possono uniformare tempi dei fotogrammi irregolari.",  // FrameLatencyTooltip
+    "Triplo buffer",  // TripleBufferingLabel
+    "Tre buffer di visualizzazione invece di due.",  // TripleBufferingTooltip
+    "Sincronizza la presentazione con lo schermo. Con il renderer nativo, la velocità del gioco non dipende dal VSync.",  // VsyncNativeTooltip
+    "Scheda video:",  // GraphicsDeviceLabel
+    "Automatica",  // GraphicsDeviceAuto
+    "La scheda video su cui gira il gioco. Automatica lascia la scelta al renderer. Sui portatili con due schede video, scegli quella dedicata (NVIDIA o AMD).",  // GraphicsDeviceTooltip
 };
 
 }  // namespace localization_strings

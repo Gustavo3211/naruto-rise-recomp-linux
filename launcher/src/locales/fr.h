@@ -154,6 +154,29 @@ inline constexpr const char* kFr[] = {
     "Personnalisée (%u)",  // GameLanguageCustom
     "Appliquée au prochain lancement. Les textes et voix disponibles dépendent des fichiers du jeu.",  // GameLanguageHint
     "Langue de l'interface du lanceur",  // LauncherLanguageTooltip
+    "Xenos (GPU émulé)",  // RendererXenos
+    "Natif (Direct3D 12)",  // RendererNative
+    "Xenos émule le GPU de la Xbox 360 et couvre tout le jeu. Le moteur de rendu natif dessine le jeu directement avec Direct3D 12 : plus rapide et avec plus d'options, mais encore en test dans certaines parties du jeu.",  // RendererTooltip
+    "Non disponible avec le moteur de rendu natif.",  // NativeUnavailableTooltip
+    "1920x1080 - 1,5x (Full HD)",  // Res1_5x
+    "MSAA :",  // MsaaLabel
+    "4x (original)",  // MsaaOriginal
+    "Multi-échantillonnage des scènes 3D du jeu. Le 8x demande un GPU plus puissant.",  // MsaaTooltip
+    "AA de transparence",  // TransparencyAaLabel
+    "Adoucit les bords du feuillage, des clôtures et des autres textures découpées (alpha to coverage).",  // TransparencyAaTooltip
+    "60 FPS",  // UnlockFpsLabel
+    "Fait tourner les menus et le monde ouvert à 60 FPS au lieu de 30 (les combats tournent déjà à 60). Demande un CPU plus rapide.",  // UnlockFpsTooltip
+    "Luminosité :",  // BrightnessLabel
+    "50 correspond à la luminosité d'origine du jeu.",  // BrightnessTooltip
+    "Latence d'image :",  // FrameLatencyLabel
+    "1 (minimale)",  // FrameLatencyLowest
+    "Images en file d'attente avant l'affichage. 1 offre la latence la plus faible ; 2 ou 3 peuvent lisser des temps d'image irréguliers.",  // FrameLatencyTooltip
+    "Triple tampon",  // TripleBufferingLabel
+    "Trois tampons d'affichage au lieu de deux.",  // TripleBufferingTooltip
+    "Synchronise l'affichage avec l'écran. Avec le moteur de rendu natif, la vitesse du jeu ne dépend pas de la VSync.",  // VsyncNativeTooltip
+    "Carte graphique :",  // GraphicsDeviceLabel
+    "Automatique",  // GraphicsDeviceAuto
+    "La carte graphique utilisée par le jeu. Automatique laisse le choix au moteur de rendu. Sur les portables à deux cartes graphiques, choisissez la carte dédiée (NVIDIA ou AMD).",  // GraphicsDeviceTooltip
 };
 
 }  // namespace localization_strings

@@ -8,6 +8,7 @@ set(LAUNCHER_SOURCES
     src/main.cpp
     src/config_manager.cpp
     src/content_manager.cpp
+    src/graphics_devices.cpp
     src/localization.cpp
     src/texture_loader.cpp
     src/theme.cpp
@@ -53,6 +54,7 @@ endif()
 if(WIN32)
     target_link_libraries(narutorise_launcher PRIVATE
         d3d11
+        d3d12
         dxgi
         shell32
     )
@@ -92,6 +94,13 @@ set_target_properties(narutorise_localization_test PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}")
 if(MSVC)
     target_compile_options(narutorise_localization_test PRIVATE /utf-8)
+endif()
+
+# The game executable carries the native renderer next to the Xenos plugin:
+# the launcher offers the choice and the native renderer's options.
+if(NARUTORISE_NATIVE_RENDERER_BOOTSTRAP)
+    target_compile_definitions(narutorise_launcher PRIVATE NARUTORISE_LAUNCHER_NATIVE_RENDERER=1)
+    target_compile_definitions(narutorise_config_manager_test PRIVATE NARUTORISE_LAUNCHER_NATIVE_RENDERER=1)
 endif()
 
 # ---------------------------------------------------------------------------

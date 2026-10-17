@@ -24,7 +24,12 @@
 #include <rex/ui/overlay/debug_overlay.h>
 #include <rex/ui/window.h>
 
+#include "graphics_device.h"
+#include "input_replay.h"
 #include "ultrawide.h"
+#ifdef NARUTORISE_NATIVE_RENDERER_BOOTSTRAP
+#include "gpu/host/app.h"
+#endif
 
 REXCVAR_DEFINE_BOOL(show_fps_overlay, false, "narutorise/UI",
                     "Show FPS and frametime overlay (toggle with F1)");
@@ -145,6 +150,18 @@ class NarutoriseApp : public rex::ReXApp {
  public:
   using rex::ReXApp::ReXApp;
 
+  void OnPreSetup(rex::RuntimeConfig& config) override {
+    // Input recording and replay for test boots (input_replay.cpp); the SDK's
+    // default input system when neither is asked for.
+    config.input_factory = CreateInputSystem;
+#ifdef NARUTORISE_NATIVE_RENDERER_BOOTSTRAP
+    gpu::host::Configure(config);
+#endif
+    // The Xenos renderer (no graphics system of the native one): its D3D12
+    // adapter by the graphics_device name.
+    if (!config.graphics) SelectXenosAdapter();
+  }
+
   static std::unique_ptr<rex::ui::WindowedApp> Create(
       rex::ui::WindowedAppContext& ctx) {
     return std::unique_ptr<NarutoriseApp>(new NarutoriseApp(ctx, "narutorise",
@@ -254,10 +271,26 @@ class NarutoriseApp : public rex::ReXApp {
   }
 
   void OnPostLoadXexImage() override {
+    ApplyUltrawide();
+  }
+
+  // The anamorphic projection relies on the SDK presenter stretching the 16:9
+  // image to the window. The native renderer keeps the 16:9 image with bars,
+  // so the game stays at 16:9 there.
+  void ApplyUltrawide() {
+#ifdef NARUTORISE_NATIVE_RENDERER_BOOTSTRAP
+    if (gpu::host::Enabled()) {
+      if (rex::cvar::Query<double>("ultrawide_target_aspect") > 0.0) {
+        REXLOG_INFO("[narutorise] ultrawide_target_aspect is not used by the native renderer (16:9)");
+      }
+      return;
+    }
+#endif
     ApplyUltrawidePatch(runtime()->virtual_membase());
   }
 
   void OnPostSetup() override {
+    RestoreXenosAdapter();  // The provider exists by now.
     SeedShaderStorage();
     AutoInstallDlc();
 
@@ -293,10 +326,18 @@ class NarutoriseApp : public rex::ReXApp {
     rex::cvar::RegisterChangeCallback(
         "ultrawide_target_aspect", [this](std::string_view, std::string_view) {
           if (runtime()) {
-            ApplyUltrawidePatch(runtime()->virtual_membase());
+            ApplyUltrawide();
           }
         });
   }
+
+#ifdef NARUTORISE_NATIVE_RENDERER_BOOTSTRAP
+  bool OnWindowCloseRequested() override {
+    // The native renderer closes in order (guest threads joined, device
+    // owner, resources and engine released) before OnClosing hard-exits.
+    return gpu::host::CloseRequested();
+  }
+#endif
 
   void OnShutdown() override {
     rex::cvar::UnregisterChangeCallbacks("ultrawide_target_aspect");

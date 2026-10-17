@@ -1,0 +1,21 @@
+{
+  "game": "Naruto: Rise of a Ninja",
+  "wikidata": "Q2713853",
+  "system": "Xbox 360",
+  "type": "recomp",
+  "original": { "serial": "US-2021" },
+  "project": "Naruto: Rise of a Ninja — Recomp",
+  "status": "released",
+  "targets": ["Windows"],
+  "toolchain": "Rexglue",
+  "approach": "Static recompilation of the Xbox 360 PowerPC code into C++ with the ReXGlue SDK, whose runtime provides system services, graphics, audio and input.",
+  "notes": "Native Windows x64 port (Direct3D 12). Features 21:9 and 32:9 ultrawide, 1x-4x resolution scaling, FXAA, an FPS/frametime overlay, character DLC support through an additional recompiled engine module, and a launcher and installer in seven languages. Players supply their own Xbox 360 game files.",
+  "tags": ["ultrawide", "dlc"],
+  "maintainers": [
+    { "name": "jorjbarbosa", "link": "https://github.com/jorjbarbosa" }
+  ],
+  "links": [
+    { "label": "Releases", "url": "https://github.com/jorjbarbosa/naruto-rise-recomp/releases" },
+    { "label": "Build guide", "url": "https://github.com/jorjbarbosa/naruto-rise-recomp/blob/main/docs/build-and-run.md" }
+  ]
+}

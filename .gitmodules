@@ -1,3 +1,18 @@
 [submodule "sdk"]
 	path = sdk
 	url = https://github.com/rexglue/rexglue-sdk.git
+[submodule "tools/xenosrecomp/thirdparty/fmt"]
+	path = tools/xenosrecomp/thirdparty/fmt
+	url = https://github.com/fmtlib/fmt.git
+[submodule "tools/xenosrecomp/thirdparty/dxc-bin"]
+	path = tools/xenosrecomp/thirdparty/dxc-bin
+	url = https://github.com/renderbag/dxc-bin.git
+[submodule "tools/xenosrecomp/thirdparty/smol-v"]
+	path = tools/xenosrecomp/thirdparty/smol-v
+	url = https://github.com/aras-p/smol-v
+[submodule "tools/xenosrecomp/thirdparty/xxHash"]
+	path = tools/xenosrecomp/thirdparty/xxHash
+	url = https://github.com/Cyan4973/xxHash.git
+[submodule "tools/xenosrecomp/thirdparty/zstd"]
+	path = tools/xenosrecomp/thirdparty/zstd
+	url = https://github.com/facebook/zstd.git

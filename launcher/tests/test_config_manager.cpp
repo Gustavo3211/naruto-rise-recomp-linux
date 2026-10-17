@@ -79,8 +79,50 @@ int main(int argc, char** argv) {
     Require(ConfigManager::Save(new_path, GameConfig{}), "New configuration failed to save");
     Require(toml::parse_file(new_path.string())["user_language"].value<int>() == 1,
             "New configuration must write the English default");
+
+    // The renderer and the native renderer's options: written only when the
+    // executable carries the native renderer, and kept as they are otherwise.
+    Write(path, "renderer = 'native'\nmsaa_samples = 8\nbrightness = 0.7\ninternal_resolution_scale = 1.5\n"
+                "unlock_fps = true\ntransparency_antialiasing = true\nmax_frame_latency = 2\n"
+                "triple_buffering = true\n");
+    GameConfig native;
+    Require(ConfigManager::Load(path, native), "Native renderer options failed to load");
+    Require(native.renderer == "native" && native.msaa_samples == 8 && native.brightness == 0.7 &&
+                native.internal_resolution_scale == 1.5 && native.unlock_fps &&
+                native.transparency_antialiasing && native.max_frame_latency == 2 && native.triple_buffering,
+            "Native renderer options were not read");
+    native.renderer = "xenos";
+    native.msaa_samples = 2;
+    Require(ConfigManager::Save(path, native), "Native renderer options failed to save");
+    const auto saved = toml::parse_file(path.string());
+    Require(saved["renderer"].value<std::string>() == (kNativeRendererBuilt ? "xenos" : "native"),
+            "Renderer choice was not saved as built");
+    Require(saved["msaa_samples"].value<int>() == (kNativeRendererBuilt ? 2 : 8),
+            "Native renderer option was not saved as built");
+    // The graphics card, for both renderers: read and saved by name.
+    Write(path, "graphics_device = 'NVIDIA GeForce RTX 4060 Laptop GPU'\n");
+    GameConfig device;
+    Require(ConfigManager::Load(path, device) && device.graphics_device == "NVIDIA GeForce RTX 4060 Laptop GPU",
+            "graphics_device was not read");
+    device.graphics_device.clear();
+    Require(ConfigManager::Save(path, device) &&
+                toml::parse_file(path.string())["graphics_device"].value<std::string>() == "",
+            "graphics_device was not saved");
+    // user_data_root is read for the command line and kept as written.
+    Write(path, "user_data_root = 'user'\n");
+    GameConfig user_root;
+    Require(ConfigManager::Load(path, user_root) && user_root.user_data_root == "user",
+            "user_data_root was not read");
+    Require(ConfigManager::Save(path, user_root) &&
+                toml::parse_file(path.string())["user_data_root"].value<std::string>() == "user",
+            "Saving changed user_data_root");
+    Write(path, "renderer = 'vulkan'\n");
+    GameConfig unknown;
+    Require(ConfigManager::Load(path, unknown) && unknown.renderer == "xenos",
+            "An unknown renderer must fall back to Xenos");
     std::cout << "Game languages persist; launcher language stays independent; "
-                 "legacy, custom and invalid values handled\n";
+                 "legacy, custom and invalid values handled; renderer options "
+              << (kNativeRendererBuilt ? "saved" : "kept") << "\n";
     return 0;
   } catch (const std::exception& error) {
     std::cerr << error.what() << '\n';

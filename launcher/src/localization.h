@@ -159,6 +159,31 @@ enum class TextId {
   GameLanguageCustom,
   GameLanguageHint,
   LauncherLanguageTooltip,
+  // --- Renderer ---
+  RendererXenos,
+  RendererNative,
+  RendererTooltip,
+  NativeUnavailableTooltip,
+  Res1_5x,
+  MsaaLabel,
+  MsaaOriginal,
+  MsaaTooltip,
+  TransparencyAaLabel,
+  TransparencyAaTooltip,
+  UnlockFpsLabel,
+  UnlockFpsTooltip,
+  BrightnessLabel,
+  BrightnessTooltip,
+  FrameLatencyLabel,
+  FrameLatencyLowest,
+  FrameLatencyTooltip,
+  TripleBufferingLabel,
+  TripleBufferingTooltip,
+  VsyncNativeTooltip,
+  // --- Graphics card ---
+  GraphicsDeviceLabel,
+  GraphicsDeviceAuto,
+  GraphicsDeviceTooltip,
   Count
 };
 

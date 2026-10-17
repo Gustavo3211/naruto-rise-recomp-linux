@@ -154,6 +154,29 @@ inline constexpr const char* kEs[] = {
     "Personalizado (%u)",  // GameLanguageCustom
     "Se aplica al iniciar el juego. Los textos y voces disponibles dependen de los archivos del juego.",  // GameLanguageHint
     "Idioma de la interfaz del launcher",  // LauncherLanguageTooltip
+    "Xenos (GPU emulada)",  // RendererXenos
+    "Nativo (Direct3D 12)",  // RendererNative
+    "Xenos emula la GPU de Xbox 360 y cubre todo el juego. El renderizador nativo dibuja el juego directamente con Direct3D 12: más rápido y con más opciones, pero aún en pruebas en partes del juego.",  // RendererTooltip
+    "No disponible con el renderizador nativo.",  // NativeUnavailableTooltip
+    "1920x1080 - 1,5x (Full HD)",  // Res1_5x
+    "MSAA:",  // MsaaLabel
+    "4x (original)",  // MsaaOriginal
+    "Multimuestreo de las escenas 3D del juego. 8x requiere una GPU más potente.",  // MsaaTooltip
+    "AA de transparencias",  // TransparencyAaLabel
+    "Suaviza los bordes del follaje, las vallas y otras texturas recortadas (alpha to coverage).",  // TransparencyAaTooltip
+    "60 FPS",  // UnlockFpsLabel
+    "Ejecuta los menús y el mundo abierto a 60 FPS en lugar de 30 (los combates ya van a 60). Requiere una CPU más rápida.",  // UnlockFpsTooltip
+    "Brillo:",  // BrightnessLabel
+    "50 es el brillo original del juego.",  // BrightnessTooltip
+    "Latencia de fotogramas:",  // FrameLatencyLabel
+    "1 (mínima)",  // FrameLatencyLowest
+    "Fotogramas en cola antes de mostrarse. 1 tiene el menor retraso de entrada; 2 o 3 pueden suavizar tiempos de fotograma irregulares.",  // FrameLatencyTooltip
+    "Triple búfer",  // TripleBufferingLabel
+    "Tres búferes de pantalla en lugar de dos.",  // TripleBufferingTooltip
+    "Sincroniza la presentación con la pantalla. Con el renderizador nativo, la velocidad del juego no depende de la VSync.",  // VsyncNativeTooltip
+    "Tarjeta gráfica:",  // GraphicsDeviceLabel
+    "Automática",  // GraphicsDeviceAuto
+    "La tarjeta gráfica en la que se ejecuta el juego. Automática deja la elección al renderizador. En portátiles con dos tarjetas gráficas, elige la dedicada (NVIDIA o AMD).",  // GraphicsDeviceTooltip
 };
 
 }  // namespace localization_strings

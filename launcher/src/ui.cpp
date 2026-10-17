@@ -5,11 +5,13 @@
 #include <imgui.h>
 
 #include <algorithm>
+#include <cmath>
 #include <cstdio>
 #include <mutex>
 
 #include "content_manager.h"
 #include "game_paths.h"
+#include "graphics_devices.h"
 #include "localization.h"
 #include "theme.h"
 
@@ -131,6 +133,11 @@ void ApplyRecommended(GameConfig& config) {
   config.present_effect = "cas";
   config.present_dither = false;
   config.show_fps_overlay = false;
+  config.msaa_samples = 0;
+  config.transparency_antialiasing = config.unlock_fps = config.triple_buffering = false;
+  config.brightness = 0.5;
+  config.internal_resolution_scale = 0;
+  config.max_frame_latency = 1;
   config.input_backend = "sdl";
   config.ultrawide_target_aspect = 0;
   const SDL_DisplayMode* mode = SDL_GetCurrentDisplayMode(SDL_GetPrimaryDisplay());
@@ -385,29 +392,85 @@ bool LauncherUI::Render(SDL_Window* window, const std::filesystem::path& base_di
     ImGui::Checkbox(Tr(TextId::SkipIntroLabel), &config.skip_intro_videos);
     EndCard();
     ImGui::Dummy(ImVec2(0, 4));
-    BeginCard("Graphics", 438);
+    BeginCard("Graphics", 0);
     ImGui::TextColored(kAccent, "%s", Tr(TextId::GroupGraphics));
     ImGui::Spacing();
+    // The options follow the selected renderer: the native renderer has no
+    // ultrawide, dithering or FPS overlay, and has its own options below.
+    const bool native = kNativeRendererBuilt && config.renderer == "native";
     if (ImGui::BeginTable("GraphicsFields", 2, ImGuiTableFlags_SizingStretchProp)) {
       ImGui::TableSetupColumn("Label", ImGuiTableColumnFlags_WidthFixed, 160);
       ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthStretch);
       SettingLabel(TextId::DisplayLabel);
       ImGui::AlignTextToFramePadding();
       ImGui::TextUnformatted(DisplayName().c_str());
+      SettingLabel(TextId::RendererLabel);
+      if (kNativeRendererBuilt) {
+        const char* renderers[] = {Tr(TextId::RendererXenos), Tr(TextId::RendererNative)};
+        int renderer = native ? 1 : 0;
+        if (ImGui::Combo("##Renderer", &renderer, renderers, 2)) config.renderer = renderer == 1 ? "native" : "xenos";
+        if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", Tr(TextId::RendererTooltip));
+      } else {
+        ImGui::AlignTextToFramePadding();
+        Muted("ReXGlue · Direct3D 12");
+      }
+      SettingLabel(TextId::GraphicsDeviceLabel);
+      {
+        // Automatic, the cards present, and a saved card that is no longer present.
+        std::vector<std::string> devices = GraphicsDevices();
+        if (!config.graphics_device.empty() &&
+            std::find(devices.begin(), devices.end(), config.graphics_device) == devices.end()) {
+          devices.push_back(config.graphics_device);
+        }
+        const char* current = config.graphics_device.empty() ? Tr(TextId::GraphicsDeviceAuto)
+                                                             : config.graphics_device.c_str();
+        if (ImGui::BeginCombo("##GraphicsDevice", current)) {
+          if (ImGui::Selectable(Tr(TextId::GraphicsDeviceAuto), config.graphics_device.empty())) {
+            config.graphics_device.clear();
+          }
+          for (const auto& device : devices) {
+            const bool selected = device == config.graphics_device;
+            if (ImGui::Selectable(device.c_str(), selected)) config.graphics_device = device;
+            if (selected) ImGui::SetItemDefaultFocus();
+          }
+          ImGui::EndCombo();
+        }
+        if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", Tr(TextId::GraphicsDeviceTooltip));
+      }
       SettingLabel(TextId::AspectLabel);
       const char* aspects[] = {Tr(TextId::Aspect16x9), Tr(TextId::Aspect21x9), Tr(TextId::Aspect32x9)};
-      int aspect = config.ultrawide_target_aspect >= 3.5 ? 2 : config.ultrawide_target_aspect >= 2.3 ? 1 : 0;
+      int aspect = native ? 0 : config.ultrawide_target_aspect >= 3.5 ? 2 : config.ultrawide_target_aspect >= 2.3 ? 1 : 0;
+      ImGui::BeginDisabled(native);
       if (ImGui::Combo("##Aspect", &aspect, aspects, 3)) config.ultrawide_target_aspect = aspect == 2 ? 3.5556 : aspect == 1 ? 2.3889 : 0;
-      if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", Tr(TextId::AspectTooltip));
-      SettingLabel(TextId::ResolutionLabel);
-      const char* scales[] = {Tr(TextId::Res1x), Tr(TextId::Res2x), Tr(TextId::Res3x), Tr(TextId::Res4x)};
-      int scale = std::clamp(config.resolution_scale - 1, 0, 3);
-      if (ImGui::Combo("##Resolution", &scale, scales, 4)) {
-        config.resolution_scale = config.draw_resolution_scale_x = config.draw_resolution_scale_y = scale + 1;
+      ImGui::EndDisabled();
+      if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+        ImGui::SetTooltip("%s", Tr(native ? TextId::NativeUnavailableTooltip : TextId::AspectTooltip));
       }
-      SettingLabel(TextId::RendererLabel);
-      ImGui::AlignTextToFramePadding();
-      Muted("ReXGlue · Direct3D 12");
+      SettingLabel(TextId::ResolutionLabel);
+      if (native) {
+        // The native renderer also takes a fractional scale (internal_resolution_scale).
+        constexpr double kScales[] = {1.0, 1.5, 2.0, 3.0, 4.0};
+        const char* scales[] = {Tr(TextId::Res1x), Tr(TextId::Res1_5x), Tr(TextId::Res2x), Tr(TextId::Res3x), Tr(TextId::Res4x)};
+        const double current = config.internal_resolution_scale > 0 ? config.internal_resolution_scale : config.resolution_scale;
+        int scale = 0;
+        for (int i = 1; i < 5; ++i) {
+          if (std::abs(kScales[i] - current) < std::abs(kScales[scale] - current)) scale = i;
+        }
+        if (ImGui::Combo("##Resolution", &scale, scales, 5)) {
+          if (scale == 1) {
+            config.internal_resolution_scale = kScales[1];
+          } else {
+            config.internal_resolution_scale = 0;
+            config.resolution_scale = config.draw_resolution_scale_x = config.draw_resolution_scale_y = int(kScales[scale]);
+          }
+        }
+      } else {
+        const char* scales[] = {Tr(TextId::Res1x), Tr(TextId::Res2x), Tr(TextId::Res3x), Tr(TextId::Res4x)};
+        int scale = std::clamp(config.resolution_scale - 1, 0, 3);
+        if (ImGui::Combo("##Resolution", &scale, scales, 4)) {
+          config.resolution_scale = config.draw_resolution_scale_x = config.draw_resolution_scale_y = scale + 1;
+        }
+      }
       SettingLabel(TextId::TextureFilteringLabel);
       const char* filters[] = {Tr(TextId::AnisoDefault), "2x", "4x", "8x", "16x"};
       int filter = std::clamp(config.anisotropic_override - 1, 0, 4);
@@ -428,6 +491,23 @@ bool LauncherUI::Render(SDL_Window* window, const std::filesystem::path& base_di
       if (ImGui::Combo("##PostFX", &post, post_effects, 3)) {
         config.present_effect = post == 1 ? "cas" : post == 2 ? "fsr" : "bilinear";
       }
+      if (native) {
+        SettingLabel(TextId::MsaaLabel);
+        // msaa_samples 0 keeps the game's 4x.
+        const char* msaa_modes[] = {"2x", Tr(TextId::MsaaOriginal), "8x"};
+        int msaa = config.msaa_samples == 2 ? 0 : config.msaa_samples >= 8 ? 2 : 1;
+        if (ImGui::Combo("##MSAA", &msaa, msaa_modes, 3)) config.msaa_samples = msaa == 0 ? 2 : msaa == 2 ? 8 : 0;
+        if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", Tr(TextId::MsaaTooltip));
+        SettingLabel(TextId::BrightnessLabel);
+        int brightness = std::clamp(int(std::lround(config.brightness * 100)), 0, 100);
+        if (ImGui::SliderInt("##Brightness", &brightness, 0, 100)) config.brightness = brightness / 100.0;
+        if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", Tr(TextId::BrightnessTooltip));
+        SettingLabel(TextId::FrameLatencyLabel);
+        const char* latencies[] = {Tr(TextId::FrameLatencyLowest), "2", "3"};
+        int latency = std::clamp(config.max_frame_latency, 1, 3) - 1;
+        if (ImGui::Combo("##Latency", &latency, latencies, 3)) config.max_frame_latency = latency + 1;
+        if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", Tr(TextId::FrameLatencyTooltip));
+      }
       ImGui::EndTable();
     }
     ImGui::Spacing();
@@ -436,11 +516,31 @@ bool LauncherUI::Render(SDL_Window* window, const std::filesystem::path& base_di
     if (ImGui::Checkbox(Tr(TextId::VsyncLabel), &config.vsync)) {
       config.d3d12_host_vsync = config.vsync;
     }
-    if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", Tr(TextId::VsyncTooltip));
+    if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", Tr(native ? TextId::VsyncNativeTooltip : TextId::VsyncTooltip));
+    // Dithering and the FPS overlay belong to the Xenos presenter.
+    bool unavailable = false;
+    ImGui::BeginDisabled(native);
     ImGui::SameLine(0, 24);
-    ImGui::Checkbox(Tr(TextId::DitherLabel), &config.present_dither);
+    ImGui::Checkbox(Tr(TextId::DitherLabel), native ? &unavailable : &config.present_dither);
+    if (native && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+      ImGui::SetTooltip("%s", Tr(TextId::NativeUnavailableTooltip));
+    }
     ImGui::SameLine(0, 24);
-    ImGui::Checkbox(Tr(TextId::FpsOverlayLabel), &config.show_fps_overlay);
+    ImGui::Checkbox(Tr(TextId::FpsOverlayLabel), native ? &unavailable : &config.show_fps_overlay);
+    if (native && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+      ImGui::SetTooltip("%s", Tr(TextId::NativeUnavailableTooltip));
+    }
+    ImGui::EndDisabled();
+    if (native) {
+      ImGui::Checkbox(Tr(TextId::TransparencyAaLabel), &config.transparency_antialiasing);
+      if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", Tr(TextId::TransparencyAaTooltip));
+      ImGui::SameLine(0, 24);
+      ImGui::Checkbox(Tr(TextId::UnlockFpsLabel), &config.unlock_fps);
+      if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", Tr(TextId::UnlockFpsTooltip));
+      ImGui::SameLine(0, 24);
+      ImGui::Checkbox(Tr(TextId::TripleBufferingLabel), &config.triple_buffering);
+      if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", Tr(TextId::TripleBufferingTooltip));
+    }
     EndCard();
     ImGui::Dummy(ImVec2(0, 4));
     BeginCard("Controls", 126);

@@ -69,6 +69,7 @@ The values below match `app/narutorise.toml` at the time of the project analysis
 | `user_language` | `1` | Game language; see the language codes above |
 | `resolution_scale` | `2` | Internal scale; the launcher offers 1 through 4 |
 | `draw_resolution_scale_x`, `draw_resolution_scale_y` | `2`, `2` | Draw scales, synchronized by the launcher |
+| `graphics_device` | `""` | Graphics card by the name Windows gives it (both renderers); empty is automatic. See [Graphics card](#graphics-card) |
 | `fullscreen` | `true` | Fullscreen mode |
 | `vsync`, `d3d12_host_vsync` | `true`, `true` | Vertical synchronization |
 | `video_mode_refresh_rate` | `60.0` | Reported refresh rate; not a guarantee of 60 FPS |
@@ -83,6 +84,48 @@ The values below match `app/narutorise.toml` at the time of the project analysis
 The launcher provides anisotropic filtering up to 16×. The internal `anisotropic_override` value uses the SDK's encoding; select the desired level through the interface.
 
 `d3d12_readback_resolve = true` and `execute_unclipped_draw_vs_on_cpu = true` are part of the current graphics configuration. The latter is associated with the fix for black flickering during fights, together with the corresponding SDK patch.
+
+## Renderer
+
+Builds with the native renderer (`NARUTORISE_NATIVE_RENDERER_BOOTSTRAP=ON`, see [Build and run](build-and-run.md)) carry two renderers in the same executable, chosen at launch in the launcher (**Settings → Renderer**) or in `narutorise.toml`:
+
+| Renderer | `renderer` |
+| --- | --- |
+| Xenos, the emulated Xbox 360 GPU of the SDK (default) | `"xenos"` |
+| Native, the game's Direct3D drawn with Direct3D 12 | `"native"` |
+
+Builds without the native renderer ignore the key and always use Xenos. The launcher shows the options of the selected renderer:
+
+| Option | Xenos | Native |
+| --- | --- | --- |
+| Resolution (`resolution_scale`) | 1× to 4× | 1×, 1.5× (`internal_resolution_scale = 1.5`), 2× to 4× |
+| Texture filtering, FXAA, CAS/FSR, VSync, fullscreen | Yes | Yes |
+| Aspect ratio (`ultrawide_target_aspect`) | Yes | No: the image stays 16:9 with bars |
+| Dithering (`present_dither`), FPS overlay (`show_fps_overlay`, F1), F3 overlay | Yes | No |
+| MSAA, transparency antialiasing, 60 FPS, brightness, frame latency, triple buffering | No | Yes |
+
+With the native renderer, VSync does not change the game speed: the game paces itself.
+
+Native renderer options:
+
+| Key | Default | Effect |
+| --- | --- | --- |
+| `msaa_samples` | `0` | MSAA of the game's multisampled targets: `0` keeps the game's 4×; `2`, `4` or `8` |
+| `transparency_antialiasing` | `false` | Alpha to coverage instead of the alpha test on foliage, fences and other cut-out textures |
+| `unlock_fps` | `false` | Menus and open world at 60 FPS instead of 30 (fights already run at 60) |
+| `brightness` | `0.5` | Output brightness; `0.5` is the game's |
+| `internal_resolution_scale` | `0.0` | Fractional internal scale from 1 to 4 (`1.5` = 1920×1080); `0` uses `resolution_scale` |
+| `max_frame_latency` | `1` | Frames queued ahead of the display (1 to 3) |
+| `triple_buffering` | `false` | Three swapchain buffers instead of two |
+
+## Graphics card
+
+The launcher lists the graphics cards that run Direct3D 12 (**Settings → Graphics card**) and saves the chosen one by name in `graphics_device`, as Unleashed Recompiled does with `GraphicsDevice`. Both renderers honor it:
+
+- **Automatic** (`graphics_device = ""`): the native renderer takes the card with the most dedicated video memory; Xenos takes the first card Windows lists.
+- **A named card:** the native renderer asks Plume for it; Xenos sets the SDK's `d3d12_adapter` to its index for that launch only. A name that is no longer present (a removed card) falls back to automatic, with a warning in the log.
+
+The executable also exports `NvOptimusEnablement` and `AmdPowerXpressRequestHighPerformance`, so hybrid laptops (NVIDIA Optimus, AMD PowerXpress) run the game on the dedicated card. The log names the card in use: `DXGI adapter:` for Xenos, `Native renderer adapter:` for the native renderer.
 
 ## Shortcuts
 
@@ -114,6 +157,8 @@ Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'narutorise'
 ```
 
 Back up the entire `narutorise/` folder in Documents to preserve saves, content, and metadata. The runtime supports overriding `user_data_root` and `cache_root`, but the launcher's DLC manager uses the default Documents path; custom locations require consistent manual organization.
+
+The game reads `user_data_root` before `narutorise.toml`, so in the TOML file it takes effect only when the launcher starts the game: the launcher passes it on the command line (a relative path is relative to the launcher's folder). Started directly, the game takes it from `--user_data_root` or the `REX_USER_DATA_ROOT` environment variable.
 
 To specify extracted game data and a Title Update:
 
