@@ -141,9 +141,9 @@ void RenderDisplayGroup(OptionList& list, GameConfig& config) {
 
   int brightness = std::clamp(static_cast<int>(std::lround(config.brightness * 100)), 0, 100);
   if (list.Slider(kBrightness, brightness, 0, 100)) config.brightness = brightness / 100.0;
+  list.Slider(kFrameRate, config.frame_rate, kFrameRates);
 
   if (list.Checkbox(kVsync, config.vsync)) config.d3d12_host_vsync = config.vsync;
-  list.Slider(kFrameRate, config.frame_rate, kFrameRates);
   list.Checkbox(kFullscreen, config.fullscreen);
 }
 
