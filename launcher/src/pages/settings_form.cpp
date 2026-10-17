@@ -71,21 +71,14 @@ bool OptionList::Checkbox(const Option& option, bool& value) {
 }
 
 bool OptionList::Slider(const Option& option, int& value, int min, int max) {
-  return Track(option, value, min, max, value);
+  return Track(option, value, min, max, {});
 }
 
 bool OptionList::Slider(const Option& option, int& value, std::span<const int> stops) {
-  if (stops.empty()) return false;
-  int index = 0;
-  for (int i = 1; i < static_cast<int>(stops.size()); ++i) {
-    if (std::abs(stops[i] - value) < std::abs(stops[index] - value)) index = i;
-  }
-  if (!Track(option, index, 0, static_cast<int>(stops.size()) - 1, stops[index])) return false;
-  value = stops[index];
-  return true;
+  return !stops.empty() && Track(option, value, 0, 0, stops);
 }
 
-bool OptionList::Track(const Option& option, int& value, int min, int max, int shown) {
+bool OptionList::Track(const Option& option, int& value, int min, int max, std::span<const int> stops) {
   if (!BeginRow(option)) return false;
   LabelColumn(option);
   // The value (or the tag, when the renderer does not use the option) takes a
@@ -94,14 +87,41 @@ bool OptionList::Track(const Option& option, int& value, int min, int max, int s
   const float side = (used ? ImGui::CalcTextSize("000").x : TagSize(TagText(option)).x) + 12;
   ImGui::SetNextItemWidth(row_start_.x + row_width_ - ImGui::GetCursorScreenPos().x - side);
 
+  // With stops, ImGui's slider runs over a fine range, so its grab is narrow and
+  // the handle reaches both ends; the value snaps to the nearest stop.
+  constexpr int kFine = 1000;
+  const int last = static_cast<int>(stops.size()) - 1;
+  int index = 0;
+  for (int i = 1; i <= last; ++i) {
+    if (std::abs(stops[i] - value) < std::abs(stops[index] - value)) index = i;
+  }
+  const int low = stops.empty() ? min : 0;
+  const int high = stops.empty() ? max : kFine;
+  int position = stops.empty() ? value : last > 0 ? index * kFine / last : 0;
+
   // ImGui's slider keeps the mouse and keyboard handling, drawn invisible.
   constexpr ImGuiCol kHidden[] = {ImGuiCol_FrameBg, ImGuiCol_FrameBgHovered, ImGuiCol_FrameBgActive,
                                   ImGuiCol_SliderGrab, ImGuiCol_SliderGrabActive};
   for (const ImGuiCol color : kHidden) ImGui::PushStyleColor(color, IM_COL32(0, 0, 0, 0));
   ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
-  const bool changed = ImGui::SliderInt("##value", &value, min, max, "");
+  bool changed = ImGui::SliderInt("##value", &position, low, high, "");
   ImGui::PopStyleVar();
   ImGui::PopStyleColor(static_cast<int>(std::size(kHidden)));
+  if (stops.empty()) {
+    value = position;
+  } else {
+    int snapped = last > 0 ? (position * last + kFine / 2) / kFine : 0;
+    // The arrows move from one stop to the next (the fine range would take a
+    // step of 1 out of kFine).
+    if (ImGui::IsItemFocused()) {
+      if (ImGui::IsKeyPressed(ImGuiKey_LeftArrow) || ImGui::IsKeyPressed(ImGuiKey_GamepadDpadLeft)) snapped = index - 1;
+      if (ImGui::IsKeyPressed(ImGuiKey_RightArrow) || ImGui::IsKeyPressed(ImGuiKey_GamepadDpadRight)) snapped = index + 1;
+    }
+    snapped = std::clamp(snapped, 0, last);
+    changed = snapped != index;
+    index = snapped;
+    if (changed) value = stops[index];
+  }
 
   // The handle sits where ImGui's grab is: within a 2-pixel padding, over the
   // width left by the grab (SliderBehaviorT).
@@ -109,9 +129,11 @@ bool OptionList::Track(const Option& option, int& value, int min, int max, int s
   const ImVec2 item_max = ImGui::GetItemRectMax();
   constexpr float kGrabPadding = 2;
   const float slider_width = item_max.x - item_min.x - 2 * kGrabPadding;
-  const float grab = std::min(slider_width, std::max(slider_width / (max - min + 1), ImGui::GetStyle().GrabMinSize));
-  const float fraction = max > min ? static_cast<float>(value - min) / (max - min) : 0.0f;
+  const float grab = std::min(slider_width, std::max(slider_width / (high - low + 1), ImGui::GetStyle().GrabMinSize));
+  const float fraction = stops.empty() ? (max > min ? static_cast<float>(value - min) / (max - min) : 0.0f)
+                                       : (last > 0 ? static_cast<float>(index) / last : 0.0f);
   const float x = item_min.x + kGrabPadding + grab / 2 + fraction * (slider_width - grab);
+  const int shown = stops.empty() ? value : stops[index];
   const float y = (item_min.y + item_max.y) / 2;
   auto* draw = ImGui::GetWindowDrawList();
   draw->AddRectFilled(ImVec2(item_min.x, y - 3), ImVec2(item_max.x, y + 3), ImGui::GetColorU32(ImGuiCol_FrameBg), 3);
