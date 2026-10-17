@@ -48,11 +48,14 @@ bool Enabled();
 // and a camera cut at the tick, and the object cuts of the last tick; the
 // poses copied on the main thread, the bone matrices written, cut at the tick
 // and lost (written outside the logic), and the copies of another thread (not
-// interpolated).
+// interpolated); the wait for the effects' update of the tick before the
+// block's writes (it runs on its work thread), and whether it hit its bound.
 struct Applied {
   uint32_t objects = 0, object_cuts = 0;
   bool camera = false, camera_cut = false;
   uint32_t poses = 0, bones = 0, bone_cuts = 0, bones_lost = 0, pose_other_thread = 0;
+  uint32_t effects_wait_us = 0;
+  bool effects_timeout = false;
 };
 const Applied& LastApplied();
 // Mounts (825E2A08) seen from another thread than the view block's while

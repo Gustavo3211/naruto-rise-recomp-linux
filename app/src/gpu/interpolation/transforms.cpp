@@ -9,11 +9,13 @@
 #include <algorithm>
 #include <array>
 #include <atomic>
+#include <chrono>
 #include <mutex>
 #include <cmath>
 #include <cstdlib>
 #include <cstring>
 #include <string_view>
+#include <thread>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
@@ -28,6 +30,13 @@ namespace gpu::interpolation {
 namespace {
 constexpr uint32_t kCutCounter = 0x82C0EB34;
 constexpr uint32_t kDisplayData = 0x82C0EFA4;  // The display's state: +208 its flags, +228 the object drawn.
+// The world's effects: +8 their list, +160 the manager of their work thread.
+// The logic posts the effects' update in the tick (82650610: the list at
+// manager + 236, then the start event); the thread (82650708) runs it
+// (826AB438) and clears +236 when done; the effects' draw waits for it inside
+// the view block (826AC2E8).
+constexpr uint32_t kWorldEffects = 0x82C0EB04;
+constexpr auto kEffectsWaitMax = std::chrono::milliseconds(100);
 constexpr float kCutDistance = 4.0f;    // Units in one tick (~120 units/s; walking is ~7).
 constexpr float kCutCosine = 0.5f;      // A row turning more than 60 degrees in one tick.
 constexpr float kCameraCutDistance = 10.0f, kCameraCutCosine = 0.866f;  // 8267A2A0.
@@ -290,12 +299,41 @@ void Pose(uint8_t* base, uint32_t object, uint32_t geometry, std::vector<Written
   }
 }
 
+// In an iteration with a tick, the effects' update may still run on its work
+// thread when the view block starts: the block's writes (the interpolated
+// matrices, the view block's dt of tick.h) wait for it, so the effects keep
+// reading the tick's state. +236 is read as written by the other thread; the
+// wait is bounded (kEffectsWaitMax).
+uint32_t effects_wait_us = 0;
+bool effects_timeout = false;
+void SettleEffects(uint8_t* base) {
+  effects_wait_us = 0;
+  effects_timeout = false;
+  if (!gpu::Active() || !tick::InGatedStep() || !tick::Current().tick) return;
+  uint32_t effects = 0, manager = 0;
+  if (!Read32(base, kWorldEffects, effects) || !effects || !Read32(base, effects + 160, manager) || !manager) return;
+  const volatile uint32_t* list = reinterpret_cast<const volatile uint32_t*>(base + manager + 236);
+  if (!*list) return;
+  const auto start = std::chrono::steady_clock::now();
+  while (*list) {
+    if (std::chrono::steady_clock::now() - start > kEffectsWaitMax) {
+      effects_timeout = true;
+      break;
+    }
+    std::this_thread::yield();
+  }
+  effects_wait_us = uint32_t(
+      std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - start).count());
+}
+
 // The start of the view block (82684050, r3 the view).
 void ViewStart(uint8_t* base) {
   candidates.swap(mounted);
   mounted.clear();
   collecting = Active();
   applied = {};
+  applied.effects_wait_us = effects_wait_us;
+  applied.effects_timeout = effects_timeout;
   object_written.clear();
   camera_entries_done.clear();
   if (!collecting) {
@@ -439,6 +477,7 @@ REX_HOOK_RAW(sub_82684050) {
     __imp__sub_82684050(ctx, base);
     return;
   }
+  gpu::interpolation::SettleEffects(base);   // Before any write of the view block.
   gpu::motion::ViewStart(base, ctx.r3.u32);  // The view probe, before the writes.
   gpu::tick::BeginView(base);
   gpu::interpolation::ViewStart(base);

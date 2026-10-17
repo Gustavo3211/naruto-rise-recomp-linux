@@ -28,6 +28,7 @@ extern "C" void __imp__sub_8265A058(PPCContext& __restrict, uint8_t*);
 extern "C" void __imp__sub_8267A2A0(PPCContext& __restrict, uint8_t*);
 extern "C" void __imp__sub_820FC008(PPCContext& __restrict, uint8_t*);
 extern "C" void __imp__sub_820E91E0(PPCContext& __restrict, uint8_t*);
+extern "C" void __imp__sub_826AB438(PPCContext& __restrict, uint8_t*);
 
 namespace gpu::motion {
 namespace {
@@ -67,6 +68,57 @@ struct BoneRow { uint32_t owner, object, bone; float x, y, z, a, b, c, distance;
 std::vector<BoneRow> bone_rows;
 // The interpolation of the poses (transforms.h), summed over the displays.
 uint64_t poses = 0, bones_written = 0, bone_cuts = 0, bones_lost = 0, pose_other_thread = 0;
+// The effects' update on the work thread (826AB438, r3 the list: +0 the
+// effects, +4 their count), posted by the logic in the tick (82650610) and
+// waited for by the effects' draw (826AC2E8) inside the view block: the
+// updates still running once the view block of an iteration with a tick has
+// started (the block cannot end before them), how long they ran into it, and
+// the effects' update functions (their vtable's +12).
+std::atomic<int64_t> view_tick_start{0};  // QPC of the view block of a tick, 0 outside it.
+std::mutex effects_mutex;
+std::map<uint32_t, uint64_t> effect_updates;  // Update function -> effects seen.
+uint64_t effect_runs = 0, effect_overlaps = 0, view_ticks = 0;
+// The view block's waits for that update (transforms.h), main thread.
+uint64_t effect_waits = 0, effect_wait_us_sum = 0, effect_wait_us_max = 0, effect_wait_timeouts = 0;
+double effect_ms_sum = 0, effect_ms_max = 0, overlap_ms_sum = 0, overlap_ms_max = 0;
+int64_t Qpc() {
+  LARGE_INTEGER now{};
+  QueryPerformanceCounter(&now);
+  return now.QuadPart;
+}
+double QpcMs(int64_t ticks) {
+  static const int64_t f = [] {
+    LARGE_INTEGER q{};
+    QueryPerformanceFrequency(&q);
+    return q.QuadPart;
+  }();
+  return double(ticks) * 1000.0 / double(f);
+}
+void EffectsUpdate(PPCContext& ctx, uint8_t* base) {
+  const int64_t start = Qpc();
+  const uint32_t list = ctx.r3.u32, array = Get32(base, list), count = Get32(base, list + 4);
+  std::map<uint32_t, uint64_t> seen;
+  for (uint32_t i = 0; array && i < count && i < 4096; ++i) {
+    const uint32_t effect = Get32(base, array + 4 * i);
+    const uint32_t table = effect ? Get32(base, effect) : 0;
+    if (table) ++seen[Get32(base, table + 12)];
+  }
+  __imp__sub_826AB438(ctx, base);
+  const int64_t end = Qpc(), view = view_tick_start.load();
+  std::lock_guard lock(effects_mutex);
+  ++effect_runs;
+  const double ms = QpcMs(end - start);
+  effect_ms_sum += ms;
+  effect_ms_max = std::max(effect_ms_max, ms);
+  if (view) {
+    ++effect_overlaps;
+    const double into = QpcMs(end - std::max(view, start));
+    overlap_ms_sum += into;
+    overlap_ms_max = std::max(overlap_ms_max, into);
+  }
+  for (const auto& [fn, n] : seen)
+    if (effect_updates.size() < 64 || effect_updates.count(fn)) effect_updates[fn] += n;
+}
 // The vertex textures, by physical address (translation, main and render threads).
 struct Range {
   uint32_t bytes = 0, format = 0;
@@ -293,6 +345,12 @@ void Display(PPCContext& ctx, uint8_t* base) {
   bone_cuts += applied.bone_cuts;
   bones_lost += applied.bones_lost;
   pose_other_thread += applied.pose_other_thread;
+  if (applied.effects_wait_us) {
+    ++effect_waits;
+    effect_wait_us_sum += applied.effects_wait_us;
+    effect_wait_us_max = std::max<uint64_t>(effect_wait_us_max, applied.effects_wait_us);
+  }
+  if (applied.effects_timeout) ++effect_wait_timeouts;
   if (!file) return;
   const int64_t us = Microseconds();
   const uint32_t cut = Get32(base, kCutCounter);
@@ -342,6 +400,21 @@ void Record(uint8_t* base) {
     for (const auto& [k, n] : kinds)
       formats += fmt::format("{}[{},{},{}]", formats.empty() ? "" : ",", k.first, k.second, n);
   }
+  std::string effects;
+  {
+    std::lock_guard lock(effects_mutex);
+    std::string updates;
+    for (const auto& [fn, n] : effect_updates)
+      updates += fmt::format("{}[\"{:08X}\",{}]", updates.empty() ? "" : ",", fn, n);
+    effects = fmt::format(
+        "\"runs\":{},\"view_ticks\":{},\"overlaps\":{},\"ms_mean\":{:.3f},\"ms_max\":{:.3f},"
+        "\"overlap_ms_mean\":{:.3f},\"overlap_ms_max\":{:.3f},\"waits\":{},\"wait_ms_mean\":{:.3f},"
+        "\"wait_ms_max\":{:.3f},\"wait_timeouts\":{},\"updates\":[{}]",
+        effect_runs, view_ticks, effect_overlaps, effect_runs ? effect_ms_sum / double(effect_runs) : 0.0,
+        effect_ms_max, effect_overlaps ? overlap_ms_sum / double(effect_overlaps) : 0.0, overlap_ms_max, effect_waits,
+        effect_waits ? double(effect_wait_us_sum) / double(effect_waits) / 1000.0 : 0.0,
+        double(effect_wait_us_max) / 1000.0, effect_wait_timeouts, updates);
+  }
   std::string probe;
   for (int t = 1; t >= 0; --t)
     for (int x = 0; x < kProbes; ++x)
@@ -362,7 +435,7 @@ void Record(uint8_t* base) {
       "\"changes_tick\":{{{}}},\"changes_without_tick\":{{{}}}}},\"probe\":{{\"pointers\":{},\"stages\":[{}]}},"
       "\"bones\":{{\"copies\":{},\"copies_outside_display\":{},\"copies_other_call\":{},\"copies_moving\":{},"
       "\"copies_near\":{},\"copies_far\":{},\"poses\":{},\"written\":{},\"cuts\":{},\"lost\":{},"
-      "\"poses_other_thread\":{}}}",
+      "\"poses_other_thread\":{}}},\"effects\":{{{}}}",
       main_steps, displays, cameras, seconds, seconds > 0 ? double(main_steps - last_main_steps) / seconds : 0.0,
       seconds > 0 ? double(displays - last_displays) / seconds : 0.0,
       seconds > 0 ? double(cameras - last_cameras) / seconds : 0.0, time ? Get32(base, time + 72) : 0,
@@ -371,7 +444,7 @@ void Record(uint8_t* base) {
       range_count, note_count, distinct_count, hashed, formats, pairs[1], pairs[0],
       view_pointers.empty() ? std::string("null") : view_pointers, probe, bone_copies, bone_copies_outside,
       bone_copies_other, bone_copies_moving, bone_copies_near, bone_copies_far, poses, bones_written, bone_cuts,
-      bones_lost, pose_other_thread));
+      bones_lost, pose_other_thread, effects));
   last_record = us;
   last_displays = displays;
   last_cameras = cameras;
@@ -412,9 +485,18 @@ void MainStepDone(uint8_t* base) {
   if (++main_steps % 120 == 0) Record(base);
 }
 
-void ViewStart(uint8_t* base, uint32_t) { ProbeStage(base, kViewStart); }
+void ViewStart(uint8_t* base, uint32_t) {
+  ProbeStage(base, kViewStart);
+  if (!Enabled() || !tick::Current().gate || !tick::Current().tick) return;
+  {
+    std::lock_guard lock(effects_mutex);
+    ++view_ticks;
+  }
+  view_tick_start = Qpc();
+}
 
 void Delivered(uint8_t* base) {
+  view_tick_start = 0;
   if (!Enabled()) return;
   StageHash(base, kDelivered);
   ProbeStage(base, kDelivery);
@@ -460,6 +542,10 @@ REX_HOOK_RAW(sub_820FC008) {
   if (Enabled()) StageHash(base, kListsIn);
   __imp__sub_820FC008(ctx, base);
   if (Enabled()) StageHash(base, kListsOut);
+}
+REX_HOOK_RAW(sub_826AB438) {
+  if (Enabled()) EffectsUpdate(ctx, base);
+  else __imp__sub_826AB438(ctx, base);
 }
 REX_HOOK_RAW(sub_820E91E0) {
   if (Enabled()) BoneCopy(base, ctx.r3.u32, ctx.r4.u32, uint32_t(ctx.lr));
