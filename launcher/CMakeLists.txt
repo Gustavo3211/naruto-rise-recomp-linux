@@ -6,13 +6,21 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(LAUNCHER_SOURCES
     src/main.cpp
+    src/app_version.cpp
     src/config_manager.cpp
     src/content_manager.cpp
+    src/folders.cpp
     src/graphics_devices.cpp
     src/localization.cpp
     src/texture_loader.cpp
     src/theme.cpp
     src/ui.cpp
+    src/widgets.cpp
+    src/pages/dlc.cpp
+    src/pages/game_files.cpp
+    src/pages/play.cpp
+    src/pages/settings.cpp
+    src/pages/settings_form.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../sdk/thirdparty/imgui/imgui.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../sdk/thirdparty/imgui/imgui_draw.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../sdk/thirdparty/imgui/imgui_tables.cpp
@@ -47,6 +55,15 @@ target_include_directories(narutorise_launcher PRIVATE
 target_link_libraries(narutorise_launcher PRIVATE
     SDL3::SDL3-static
 )
+
+# The release version, shown under the cover when the copy has no
+# narutorise.version file (development builds).
+set(NARUTORISE_VERSION_FILE ${CMAKE_CURRENT_SOURCE_DIR}/../packaging/version.iss)
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${NARUTORISE_VERSION_FILE})
+file(STRINGS ${NARUTORISE_VERSION_FILE} NARUTORISE_VERSION_LINE REGEX "#define MyAppVersion")
+if(NARUTORISE_VERSION_LINE MATCHES "\"([^\"]+)\"")
+    target_compile_definitions(narutorise_launcher PRIVATE NARUTORISE_VERSION="${CMAKE_MATCH_1}")
+endif()
 if(MSVC)
     target_compile_options(narutorise_launcher PRIVATE /utf-8)
 endif()

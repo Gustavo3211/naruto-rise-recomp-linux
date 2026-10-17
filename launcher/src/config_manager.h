@@ -37,9 +37,10 @@ struct GameConfig {
   bool vsync = true;
   bool d3d12_host_vsync = true;
   double video_mode_refresh_rate = 60.0;
-  int resolution_scale = 2;
-  int draw_resolution_scale_x = 2;
-  int draw_resolution_scale_y = 2;
+  // The SDK's (and Xenia's) default: the game's own 1280 x 720.
+  int resolution_scale = 1;
+  int draw_resolution_scale_x = 1;
+  int draw_resolution_scale_y = 1;
   bool d3d12_allow_variable_refresh_rate_and_tearing = true;
 
   int anisotropic_override = 5;
@@ -58,8 +59,8 @@ struct GameConfig {
   bool present_dither = false;
   bool show_fps_overlay = false;
 
-  // 0.0 = 16:9 native, 2.3889 = 21:9, 3.5556 = 32:9
-  double ultrawide_target_aspect = 2.3889;
+  // 0.0 = 16:9 native (default), 2.3889 = 21:9, 3.5556 = 32:9
+  double ultrawide_target_aspect = 0.0;
 
   std::string custom_game_root = "";
   // Saves and user content; empty keeps Documents/narutorise. Read only: the

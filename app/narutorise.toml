@@ -30,9 +30,9 @@ fullscreen = true
 vsync = true
 d3d12_host_vsync = true
 video_mode_refresh_rate = 60.0
-resolution_scale = 2
-draw_resolution_scale_x = 2
-draw_resolution_scale_y = 2
+resolution_scale = 1
+draw_resolution_scale_x = 1
+draw_resolution_scale_y = 1
 d3d12_allow_variable_refresh_rate_and_tearing = true
 
 anisotropic_override = 5
@@ -58,7 +58,7 @@ triple_buffering = false
 
 # Anamorphic Ultrawide (Hells Gate / Xenia Canary style patch).
 # 0.0 = native 16:9; 2.3889 = 21:9 (3440x1440); 3.5556 = 32:9.
-ultrawide_target_aspect = 2.3889
+ultrawide_target_aspect = 0.0
 
 # Launcher interface: "en" (default), "pt_BR", "fr", "de", "es", "it", "ru".
 launcher_language = "en"
