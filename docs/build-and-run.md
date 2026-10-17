@@ -124,7 +124,7 @@ rexgpu-xenos.dll
 amd_fidelityfx_dx12.dll   # when provided by the SDK
 narutorise.toml
 assets/
-shader_cache/
+shader_cache/              # when packaging/private/shader_cache has the storage
 ```
 
 ## 7. Run
@@ -156,7 +156,7 @@ pwsh -File .\packaging\package-release.ps1 -NoSetup
 pwsh -File .\packaging\package-release.ps1 -Build
 ```
 
-Outputs in `dist/`: `naruto-rise-recomp-win-amd64/`, a ZIP with the same name, and, when requested, `NarutoRiseInstaller.exe`. Packaging requires the Naruto shader cache and `llvm-readobj.exe` to inspect binary dependencies. See the [packaging guide](../packaging/README.md).
+Outputs in `dist/`: `naruto-rise-recomp-win-amd64/`, a ZIP with the same name, and, when requested, `NarutoRiseInstaller.exe`. Packaging requires `llvm-readobj.exe` to inspect binary dependencies and the Xenos shader storage of the game (`555307E5.xsh` and `555307E5.rtv.d3d12.xpso`) in `packaging/private/shader_cache/`. That folder is ignored by Git because the storage holds the game's shader microcode. The Xenos renderer writes these files to `Documents/narutorise/cache/shaders/shareable/` while you play; copy them from there, or point `NARUTORISE_SHADER_STORAGE_DIR` at another folder that has them. See the [packaging guide](../packaging/README.md).
 
 ## Configuration and localization regression tests
 

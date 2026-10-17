@@ -87,7 +87,9 @@ foreach ($asset in @('cover.jpg', 'narutorise.ico', 'fonts\Lato-Regular.ttf', 'f
 }
 $shaderFiles = @(Get-ChildItem (Join-Path $AppBuildDir 'shader_cache\555307E5.*') -File |
     Where-Object { $_.Extension -in @('.xsh', '.xpso', '.vkspv') })
-if (-not $shaderFiles.Count) { throw 'Missing Naruto shader cache.' }
+if (-not $shaderFiles.Count) {
+    throw 'Missing Naruto shader cache: place 555307E5.xsh and 555307E5.rtv.d3d12.xpso in packaging\private\shader_cache (or set NARUTORISE_SHADER_STORAGE_DIR).'
+}
 
 # Reject non-redistributable debug CRT imports, even if a binary was left over
 # from a previous configuration. llvm-readobj accompanies the LLVM compiler.

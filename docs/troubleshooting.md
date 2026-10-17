@@ -15,7 +15,7 @@
 | Missing generated header or DLL target | Run code generation before configuring the application and reconfigure after changing modules |
 | Failure to copy `extract-xiso.exe` | Run `setup.ps1`; the complete build includes the installer helper |
 | Out of memory during compilation | Reduce concurrency: `cmake --build app/out/build/win-amd64-release --parallel 2` |
-| Packaging reports a missing cache | Check `packaging/shader_cache/` and the cache copied to the output; the script requires files for title `555307E5` |
+| Packaging reports a missing cache | Copy `555307E5.xsh` and `555307E5.rtv.d3d12.xpso` from `Documents/narutorise/cache/shaders/shareable/` to `packaging/private/shader_cache/` (or set `NARUTORISE_SHADER_STORAGE_DIR`), then package again |
 | Debug CRT dependency in a release | Rebuild the SDK and application in Release; do not reuse Debug DLLs |
 
 ## Runtime issues
