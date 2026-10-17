@@ -15,6 +15,7 @@ This guide describes the project's **Windows x64 / Release** workflow. Run comma
 | Ninja | Available on `PATH` |
 | PowerShell | 7.2+ for `setup.ps1` |
 | Game files | An extracted Xbox 360 copy, including `default.xex` and `ai2c.dll` |
+| Python | 3.x on `PATH`, only needed for the native renderer and the packaging tests |
 | Inno Setup | 6.4+, only needed to build the installer |
 
 The `CMakeLists.txt` files declare a minimum of 3.25, but version 6 presets require CMake 3.26. The build uses C++23. Initial configuration may also download dependencies, so an internet connection is required.
@@ -108,17 +109,43 @@ cmake --build app/out/build/win-amd64-release
 
 The complete build includes the game, launcher, installer helper, assets, configuration, and shader cache. The extractor is required by the helper target even if you only intend to run the game.
 
-**Native renderer (optional).** Configure with `-DNARUTORISE_NATIVE_RENDERER_BOOTSTRAP=ON -DNATIVE_RENDERER_PLUME_SOURCE=<Plume checkout>`, with the XenosRecomp submodules in `tools/xenosrecomp/thirdparty` and `game/xeshader.sdb` in place: the build generates the native shader cache from the local game files and embeds it in `narutorise.exe`. The executable keeps the Xenos plugin, and the launcher lets you choose the renderer ([Renderer](configuration.md#renderer)). The spec constant variants of the shaders are linked during the build, so the native renderer needs no shader compiler at run time. The build keeps the translated and compiled shaders in `out/shader-store` (`NARUTORISE_SHADER_STORE`; empty disables it) and reuses them while the game files, the XenosRecomp fork and DXC do not change; deleting the folder only makes the next build slower.
+### Native renderer (optional)
+
+The [native renderer](renderers.md) is built into `narutorise.exe` when the application is configured with `NARUTORISE_NATIVE_RENDERER_BOOTSTRAP=ON`. The executable keeps the Xenos plugin, and the launcher lets you choose the renderer ([Renderer](configuration.md#renderer)). It needs:
+
+- the XenosRecomp submodules in `tools/xenosrecomp/thirdparty`, fetched by `setup.ps1` (or `git submodule update --init --recursive`);
+- a clean [Plume](https://github.com/renderbag/plume) checkout at commit `d72379344dacd3dbf9f810f92ddc87e6de1845b1`, with its D3D12 Memory Allocator submodule at `9ef66bc14edd10dee0de3a545b98578363552f66`. Configuration stops if either one is at another commit or has local changes;
+- `xeshader.sdb` from your game files. The build reads it from `game/` at the repository root (`NARUTORISE_GAME_DIR`); point the variable at `game_root/` when your files are there;
+- Python 3 on `PATH`.
+
+```powershell
+git clone https://github.com/renderbag/plume.git out/plume
+git -C out/plume checkout d72379344dacd3dbf9f810f92ddc87e6de1845b1
+git -C out/plume submodule update --init contrib/D3D12MemoryAllocator
+
+$sdkPrefix = (Resolve-Path .\sdk\out\install\win-amd64).Path
+$plume = (Resolve-Path .\out\plume).Path
+$gameDir = (Resolve-Path .\game_root).Path
+cmake --preset win-amd64-release -S app -B app/out/build/win-amd64-release "-DCMAKE_PREFIX_PATH=$sdkPrefix" `
+  -DNARUTORISE_NATIVE_RENDERER_BOOTSTRAP=ON "-DNATIVE_RENDERER_PLUME_SOURCE=$plume" "-DNARUTORISE_GAME_DIR=$gameDir"
+cmake --build app/out/build/win-amd64-release
+```
+
+The build translates the game's shaders with the XenosRecomp fork, compiles them with DXC, links the spec constant variants, and embeds the result in `narutorise.exe`, so the native renderer needs no shader compiler at run time. The shader cache derives from your game files and stays out of Git. The build keeps the translated and compiled shaders in `out/shader-store` (`NARUTORISE_SHADER_STORE`; empty disables it) and reuses them while the game files, the XenosRecomp fork, and DXC do not change; deleting the folder only makes the next build slower.
+
+The list of pipelines compiled at startup, `app/src/gpu/shaders/pipeline_cache.inc`, is optional and also stays out of Git, because it is generated from local play sessions. Without it, the build succeeds, and each pipeline compiles in the background the first time it appears, skipping its draws until it is ready.
+
+### Output
 
 Main files in `app/out/build/win-amd64-release/`:
 
 ```text
-narutorise.exe
+narutorise.exe             # with the native renderer, when enabled
 narutorise_launcher.exe
 narutorise_ai2c.dll
-narutorise_ai2c1.dll       # Shikamaru engine
-narutorise_ai2c2.dll       # DLC module builds only
-narutorise_ai2c3.dll       # Choji & Temari engine
+narutorise_ai2c1.dll       # Shikamaru engine (DLC module builds only)
+narutorise_ai2c2.dll       # Jiraiya & Sarutobi engine (DLC module builds only)
+narutorise_ai2c3.dll       # Choji & Temari engine (DLC module builds only)
 rexruntime.dll
 rexgpu-xenos.dll
 amd_fidelityfx_dx12.dll   # when provided by the SDK
@@ -152,11 +179,13 @@ After building:
 # Portable directory and ZIP, without requiring Inno Setup
 pwsh -File .\packaging\package-release.ps1 -NoSetup
 
-# Rebuild and also generate the installer (requires Inno Setup)
-pwsh -File .\packaging\package-release.ps1 -Build
+# Portable directory, ZIP, and installer (requires Inno Setup)
+pwsh -File .\packaging\package-release.ps1
 ```
 
-Outputs in `dist/`: `naruto-rise-recomp-win-amd64/`, a ZIP with the same name, and, when requested, `NarutoRiseInstaller.exe`. Packaging requires `llvm-readobj.exe` to inspect binary dependencies and the Xenos shader storage of the game (`555307E5.xsh` and `555307E5.rtv.d3d12.xpso`) in `packaging/private/shader_cache/`. That folder is ignored by Git because the storage holds the game's shader microcode. The Xenos renderer writes these files to `Documents/narutorise/cache/shaders/shareable/` while you play; copy them from there, or point `NARUTORISE_SHADER_STORAGE_DIR` at another folder that has them. See the [packaging guide](../packaging/README.md).
+The script always refreshes the build before packaging; unchanged sources are not recompiled. `-Build` is still accepted, but changes nothing.
+
+Outputs in `dist/`: `naruto-rise-recomp-win-amd64/`, a ZIP with the same name, and, without `-NoSetup`, `NarutoRiseInstaller.exe`. Packaging requires `llvm-readobj.exe` to inspect binary dependencies and the Xenos shader storage of the game (`555307E5.xsh` and `555307E5.rtv.d3d12.xpso`) in `packaging/private/shader_cache/`. That folder is ignored by Git because the storage holds the game's shader microcode. The Xenos renderer writes these files to `Documents/narutorise/cache/shaders/shareable/` while you play; copy them from there, or configure the application with `-DNARUTORISE_SHADER_STORAGE_DIR=<folder>` (a CMake cache variable, not an environment variable) to use another folder that has them. When the build includes the native renderer, its shader cache is already inside `narutorise.exe`, and packaging adds the Plume, D3D12 Memory Allocator, and XenosRecomp notices to `licenses/`. See the [packaging guide](../packaging/README.md).
 
 ## Configuration and localization regression tests
 

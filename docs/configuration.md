@@ -11,7 +11,7 @@ The launcher's **Settings** tab lists its groups on the left; the panel below th
 | Group | Options |
 | --- | --- |
 | Game | Game language, skip intro videos |
-| Display | Renderer, graphics card, resolution, aspect ratio, brightness, VSync, 60 FPS, fullscreen |
+| Display | Renderer, graphics card, resolution, aspect ratio, brightness, frame rate, VSync, fullscreen |
 | Quality | MSAA, FXAA, post-processing (CAS/FSR), texture filtering, transparency AA, dithering |
 | Controls | SDL controllers, the connected controller |
 | Advanced | Frame latency, triple buffering, FPS overlay |
@@ -73,7 +73,7 @@ The template and **Reset to Recommended** use **16:9 (`0.0`)**; select 21:9 or 3
 
 ## Main settings
 
-The values below match `app/narutorise.toml` at the time of the project analysis:
+The values below match `app/narutorise.toml`:
 
 | Key | Value | Effect |
 | --- | --- | --- |
@@ -106,6 +106,8 @@ Builds with the native renderer (`NARUTORISE_NATIVE_RENDERER_BOOTSTRAP=ON`, see 
 | Xenos, the emulated Xbox 360 GPU of the SDK (default) | `"xenos"` |
 | Native, the game's Direct3D drawn with Direct3D 12 | `"native"` |
 
+[Renderers and frame rate](renderers.md) explains how the two differ, how the native renderer presents 60 and 120 FPS, and its known issues.
+
 Builds without the native renderer ignore the key, always use Xenos and leave the native options out of the launcher. Otherwise the launcher shows the options of both renderers: those the selected renderer does not use are greyed out and tagged, and the description panel says why.
 
 | Option | Xenos | Native |
@@ -114,7 +116,7 @@ Builds without the native renderer ignore the key, always use Xenos and leave th
 | Texture filtering, FXAA, CAS/FSR, VSync, fullscreen | Yes | Yes |
 | Aspect ratio (`ultrawide_target_aspect`) | Yes | No: the image stays 16:9 with bars |
 | Dithering (`present_dither`), FPS overlay (`show_fps_overlay`, F1), F3 overlay | Yes | No |
-| MSAA, transparency antialiasing, 60 FPS, brightness, frame latency, triple buffering | No | Yes |
+| MSAA, transparency antialiasing, frame rate, brightness, frame latency, triple buffering | No | Yes |
 
 With the native renderer, VSync does not change the game speed: the game paces itself.
 
@@ -124,8 +126,7 @@ Native renderer options:
 | --- | --- | --- |
 | `msaa_samples` | `0` | MSAA of the game's multisampled targets: `0` keeps the game's 4×; `2`, `4` or `8` |
 | `transparency_antialiasing` | `false` | Alpha to coverage instead of the alpha test on foliage, fences and other cut-out textures |
-| `frame_rate` | `30` (`60` in the shipped file and the launcher) | Frame rate: `30` keeps the game's; `60` to `240` keep the game's logic at its own step and interpolate the frames in between (the launcher's slider: 30, 60, 120). Where the step is not well below the frame, the frames follow the step instead, so the game keeps its speed: fights (step 1/60 s) show at 60 below `76`, the open world (2/60 s) at 30 from `31` to `37`. With VSync on, it does not go above the monitor's refresh rate |
-| `unlock_fps` | `false` | Menus and open world at 60 FPS by running their logic at 1/60 s instead of 30 (fights already run at 60); ignored when `frame_rate` is above 30. Not in the launcher, which saves it off |
+| `frame_rate` | `30` (`60` in the shipped file and the launcher) | Frame rate: `30` keeps the game's; `31` to `240` keep the game's logic at its own step and interpolate the frames in between (the launcher's slider: 30, 60, 120). Where the step is not well below the frame, the frames follow the step instead, so the game keeps its speed: fights (step 1/60 s) show at 60 below `76`, the open world (2/60 s) at 30 from `31` to `37`. With VSync on, it does not go above the monitor's refresh rate |
 | `brightness` | `0.5` | Output brightness; `0.5` is the game's |
 | `internal_resolution_scale` | `0.0` | Fractional internal scale from 1 to 4 (`1.5` = 1920×1080); `0` uses `resolution_scale` |
 | `max_frame_latency` | `1` | Frames queued ahead of the display (1 to 3) |
@@ -144,11 +145,13 @@ The executable also exports `NvOptimusEnablement` and `AmdPowerXpressRequestHigh
 
 | Key | Action |
 | --- | --- |
-| `F1` | Toggle the FPS and frametime overlay (shows the guest and host frame rates) |
-| `F3` | Toggle the SDK debug overlay (guest frame stats, build stamp, and per-frame counters when built with perf counters) |
+| `F1` | Toggle the FPS and frametime overlay (shows the guest and host frame rates; Xenos renderer) |
+| `F3` | Toggle the SDK debug overlay (guest frame stats, build stamp, and per-frame counters when built with perf counters; Xenos renderer) |
 | `Alt+F4` | Request game shutdown |
 
 The FPS overlay (`F1`) shows two rates: **Guest** — the game's own frame rate, measured on every guest swap, which is what game speed follows — and **Host** — the window present rate, which can be much higher on high-refresh displays. Slow motion with a high host rate means the guest rate is below the game's target.
+
+The native renderer has no overlays; it writes the frame rate and frame time in the window title instead, visible in windowed mode. Set the environment variable `REX_NATIVE_FPS_TITLE=0` to hide it.
 
 ## Folders and user data
 
