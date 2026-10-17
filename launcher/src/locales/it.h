@@ -146,8 +146,8 @@ inline constexpr const char* kIt[] = {
     "Multicampionamento delle scene 3D del gioco. 8x richiede una GPU più potente.",  // MsaaDescription
     "AA della trasparenza",  // TransparencyAaLabel
     "Ammorbidisce i bordi di fogliame, recinzioni e altre texture ritagliate (alpha to coverage).",  // TransparencyAaDescription
-    "60 FPS",  // UnlockFpsLabel
-    "Esegue i menu e il mondo aperto a 60 FPS invece di 30 (i combattimenti sono già a 60). Richiede una CPU più veloce.",  // UnlockFpsDescription
+    "Frequenza fotogrammi",  // FrameRateLabel
+    "30 è la frequenza originale del gioco. Oltre, la logica mantiene il suo ritmo e i fotogrammi intermedi vengono interpolati. Con il VSync attivo si ferma a quella del monitor; le frequenze alte richiedono una CPU più veloce.",  // FrameRateDescription
     "Luminosità",  // BrightnessLabel
     "50 è la luminosità originale del gioco.",  // BrightnessDescription
     "Latenza dei fotogrammi",  // FrameLatencyLabel

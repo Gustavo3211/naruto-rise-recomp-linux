@@ -36,7 +36,11 @@ bool ConfigManager::Load(const std::filesystem::path& toml_path, GameConfig& con
     if (auto v = tbl["anisotropic_override"].value<int>()) config.anisotropic_override = *v;
     if (auto v = tbl["msaa_samples"].value<int>()) config.msaa_samples = *v;
     if (auto v = tbl["transparency_antialiasing"].value<bool>()) config.transparency_antialiasing = *v;
-    if (auto v = tbl["unlock_fps"].value<bool>()) config.unlock_fps = *v;
+    if (auto v = tbl["frame_rate"].value<int>()) {
+      config.frame_rate = *v;
+    } else if (tbl["unlock_fps"].value<bool>().value_or(false)) {
+      config.frame_rate = 60;  // A configuration from before frame_rate, with the 60 fps option on.
+    }
     if (auto v = tbl["brightness"].value<double>()) config.brightness = *v;
     if (auto v = tbl["internal_resolution_scale"].value<double>()) config.internal_resolution_scale = *v;
     if (auto v = tbl["max_frame_latency"].value<int>()) config.max_frame_latency = *v;
@@ -71,7 +75,8 @@ bool ConfigManager::Save(const std::filesystem::path& toml_path, const GameConfi
     tbl.insert_or_assign("renderer", config.renderer);
     tbl.insert_or_assign("msaa_samples", config.msaa_samples);
     tbl.insert_or_assign("transparency_antialiasing", config.transparency_antialiasing);
-    tbl.insert_or_assign("unlock_fps", config.unlock_fps);
+    tbl.insert_or_assign("frame_rate", config.frame_rate);
+    tbl.insert_or_assign("unlock_fps", false);
     tbl.insert_or_assign("brightness", config.brightness);
     tbl.insert_or_assign("internal_resolution_scale", config.internal_resolution_scale);
     tbl.insert_or_assign("max_frame_latency", config.max_frame_latency);

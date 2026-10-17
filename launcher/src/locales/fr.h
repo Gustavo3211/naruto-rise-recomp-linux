@@ -146,8 +146,8 @@ inline constexpr const char* kFr[] = {
     "Multi-échantillonnage des scènes 3D du jeu. Le 8x demande un GPU plus puissant.",  // MsaaDescription
     "AA de transparence",  // TransparencyAaLabel
     "Adoucit les bords du feuillage, des clôtures et des autres textures découpées (alpha to coverage).",  // TransparencyAaDescription
-    "60 FPS",  // UnlockFpsLabel
-    "Fait tourner les menus et le monde ouvert à 60 FPS au lieu de 30 (les combats tournent déjà à 60). Demande un CPU plus rapide.",  // UnlockFpsDescription
+    "Fréquence d'images",  // FrameRateLabel
+    "30 est la fréquence d'origine du jeu. Au-delà, la logique garde son rythme et les images intermédiaires sont interpolées. Avec la VSync, elle s'arrête à celle de l'écran ; les fréquences élevées demandent un CPU plus rapide.",  // FrameRateDescription
     "Luminosité",  // BrightnessLabel
     "50 correspond à la luminosité d'origine du jeu.",  // BrightnessDescription
     "Latence d'image",  // FrameLatencyLabel

@@ -146,8 +146,8 @@ inline constexpr const char* kDe[] = {
     "Multisampling der 3D-Szenen des Spiels. 8x braucht eine stärkere GPU.",  // MsaaDescription
     "Transparenz-AA",  // TransparencyAaLabel
     "Glättet die Kanten von Laub, Zäunen und anderen ausgeschnittenen Texturen (Alpha to Coverage).",  // TransparencyAaDescription
-    "60 FPS",  // UnlockFpsLabel
-    "Menüs und offene Welt laufen mit 60 statt 30 FPS (Kämpfe laufen bereits mit 60). Braucht eine schnellere CPU.",  // UnlockFpsDescription
+    "Bildrate",  // FrameRateLabel
+    "30 ist die Originalbildrate. Darüber behält die Spiellogik ihr Tempo, und die Zwischenbilder werden interpoliert. Mit VSync endet sie bei der Rate des Monitors; hohe Bildraten brauchen eine schnellere CPU.",  // FrameRateDescription
     "Helligkeit",  // BrightnessLabel
     "50 ist die Originalhelligkeit des Spiels.",  // BrightnessDescription
     "Bildlatenz",  // FrameLatencyLabel

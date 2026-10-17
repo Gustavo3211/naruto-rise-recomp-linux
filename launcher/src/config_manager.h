@@ -48,7 +48,9 @@ struct GameConfig {
   // Native renderer only, saved with the renderer choice.
   int msaa_samples = 0;  // 0 = the game's 4x, or 2, 4, 8
   bool transparency_antialiasing = false;
-  bool unlock_fps = false;
+  // 30 = the game's; above it, the frames between the game's logic steps are
+  // interpolated. Saved with unlock_fps off, which the launcher no longer offers.
+  int frame_rate = 60;
   double brightness = 0.5;  // 0.5 = the game's
   double internal_resolution_scale = 0.0;  // fractional scale; 0 = resolution_scale
   int max_frame_latency = 1;

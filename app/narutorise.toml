@@ -47,7 +47,11 @@ show_fps_overlay = false
 # msaa_samples: 0 = the game's 4x, or 2, 4, 8.
 msaa_samples = 0
 transparency_antialiasing = false
-# 60 fps in the menus and the open world (the fights already run at 60).
+# Frame rate: 30 keeps the game's; 60 to 240 keep the game's logic at its own
+# step and interpolate the frames in between.
+frame_rate = 60
+# 60 fps by running the menus and the open world's logic at 1/60 s instead
+# (the fights already run at 60); ignored when frame_rate is above 30.
 unlock_fps = false
 # 0.5 = the game's brightness.
 brightness = 0.5
