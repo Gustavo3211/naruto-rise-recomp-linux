@@ -1,6 +1,7 @@
 // The motion record of the frames the title builds (motion.h).
 #include "gpu/diagnostics/motion.h"
 #include "gpu/diagnostics/diagnostics.h"
+#include "gpu/diagnostics/sampler.h"
 #include "gpu/interpolation/tick.h"
 #include "gpu/interpolation/transforms.h"
 #include "gpu/common/guest_memory.h"
@@ -544,6 +545,7 @@ REX_HOOK_RAW(sub_820FC008) {
   if (Enabled()) StageHash(base, kListsOut);
 }
 REX_HOOK_RAW(sub_826AB438) {
+  gpu::sampler::RegisterThread("effects");  // The effects' work thread (82650708); REX_NATIVE_SAMPLE_PERIOD_US.
   if (Enabled()) EffectsUpdate(ctx, base);
   else __imp__sub_826AB438(ctx, base);
 }
