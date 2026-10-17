@@ -21,10 +21,12 @@ extern "C" void __imp__sub_82684050(PPCContext& __restrict, uint8_t*);
 extern "C" void __imp__sub_8259FF40(PPCContext& __restrict, uint8_t*);
 extern "C" void __imp__sub_825E2A08(PPCContext& __restrict, uint8_t*);
 extern "C" void __imp__sub_82659B88(PPCContext& __restrict, uint8_t*);
+extern "C" void __imp__sub_82580968(PPCContext& __restrict, uint8_t*);
 
 namespace gpu::interpolation {
 namespace {
 constexpr uint32_t kCutCounter = 0x82C0EB34;
+constexpr uint32_t kDisplayData = 0x82C0EFA4;  // The display's state: +208 its flags, +228 the object drawn.
 constexpr float kCutDistance = 4.0f;    // Units in one tick (~120 units/s; walking is ~7).
 constexpr float kCutCosine = 0.5f;      // A row turning more than 60 degrees in one tick.
 constexpr float kCameraCutDistance = 10.0f, kCameraCutCosine = 0.866f;  // 8267A2A0.
@@ -48,14 +50,25 @@ struct CameraTrack {
   bool valid = false, cut = false;
   Camera previous{}, current{};
 };
+// A bone matrix the pose copy reads (82580968), by its address.
+struct BoneTrack {
+  uint32_t owner = 0, bone = 0;  // The skinned object and the bone's object (0 for a local matrix).
+  uint64_t tick = 0;
+  bool valid = false;
+  Matrix previous{}, current{};
+};
 // A place written over the live transform, put back after the delivery.
 struct Written {
   uint32_t address = 0, count = 0;
   std::array<float, kCameraFloats> value{}, live{};
 };
 
-int enabled = -1;
+int enabled = -1, bones_enabled = -1;
 std::unordered_map<uint32_t, Track> tracks;  // By object.
+std::unordered_map<uint32_t, BoneTrack> bone_tracks;  // By matrix.
+std::unordered_set<uint32_t> object_written;  // The object matrices written in this view block.
+uint32_t main_thread = 0;  // The guest thread of the view block.
+thread_local uint32_t pose_object = 0;  // The object of the running pose copy.
 std::vector<uint32_t> mounted, candidates;   // Objects of the current and the last display.
 bool collecting = false;
 CameraTrack camera;
@@ -150,20 +163,129 @@ bool ApplyCamera(uint8_t* base, CameraTrack& track, uint32_t entry, uint64_t tic
 
 bool Active() { return gpu::Active() && Enabled() && tick::InGatedStep(); }
 
+bool BonesEnabled() {
+  if (bones_enabled < 0) {
+    const char* text = std::getenv("REX_NATIVE_INTERPOLATION_BONES");
+    bones_enabled = Enabled() && !(text && std::string_view(text) == "0") ? 1 : 0;
+  }
+  return bones_enabled == 1;
+}
+
+// Puts back the live values where nothing else wrote since.
+void PutBack(uint8_t* base, const std::vector<Written>& list) {
+  for (const auto& w : list) {
+    bool ours = true;
+    for (uint32_t i = 0; i < w.count && ours; ++i) ours = GetFloat(base, w.address + 4 * i) == w.value[i];
+    if (ours)
+      for (uint32_t i = 0; i < w.count; ++i) PutFloat(base, w.address + 4 * i, w.live[i]);
+  }
+}
+
+// The bone matrices the pose copy of a skinned mesh reads (82580968, the
+// object and its geometry), with the bone's object (0 for a local matrix):
+// the skin [geometry + 60] (+2 its bones, +4 their entries: +0 the bone, +72
+// its vertices), copied only with the flags of the display (+208 0x20000), of
+// the object (0x200000) and of the geometry (+84 bit 3). The bones are
+// [[object + 28] + 12] (+0 their count, +4 the array). With the object's flag
+// 0x01000000 the array has 12-byte pointers (+0 a matrix, +4 the bone's
+// object, +8 -1 or an id): the bone's global matrix [bone + 20], relative to
+// the object's (when +8 is -1 or the bone's object has the same flag), or the
+// matrix at +0; without it, 68-byte matrices relative to the object.
+void BoneMatrices(uint8_t* base, uint32_t object, uint32_t geometry, std::vector<std::pair<uint32_t, uint32_t>>& out) {
+  const uint32_t skin = Get32(base, geometry + 60), display = Get32(base, kDisplayData);
+  const uint32_t flags = Get32(base, object);
+  if (!skin || !display || !(Get32(base, display + 208) & 0x20000) || !(flags & 0x200000) ||
+      !(Get32(base, geometry + 84) & 8))
+    return;
+  const uint32_t extension = Get32(base, object + 28);
+  const uint32_t bones = extension ? Get32(base, extension + 12) : 0;
+  if (!bones) return;
+  const uint32_t count = Get32(base, bones), array = Get32(base, bones + 4);
+  const uint32_t entries = Get32(base, skin + 4), n = Get16(base, skin + 2);
+  if (!array || !entries) return;
+  for (uint32_t i = 0; i < n; ++i) {
+    const uint32_t entry = Get32(base, entries + 4 * i);
+    if (!entry || !Get16(base, entry + 72)) continue;
+    const uint32_t index = Get16(base, entry);
+    if (index >= count) continue;
+    if (!(flags & 0x01000000)) {
+      out.emplace_back(array + 68 * index, 0);
+      continue;
+    }
+    const uint32_t pointer = array + 12 * index, bone = Get32(base, pointer + 4);
+    if (Get32(base, pointer + 8) == 0xFFFFFFFFu || (bone && (Get32(base, bone) & 0x01000000))) {
+      if (const uint32_t m = bone ? Get32(base, bone + 20) : 0) out.emplace_back(m, bone);
+    } else if (const uint32_t m = Get32(base, pointer)) {
+      out.emplace_back(m, bone);
+    }
+  }
+}
+
+// The pose of a skinned mesh (82580968), before the display copies it into
+// the frame's packet: the bone matrices at the tick's alpha (out, put back
+// right after the copy).
+void Pose(uint8_t* base, uint32_t object, uint32_t geometry, std::vector<Written>& out) {
+  if (!collecting || !BonesEnabled()) return;
+  if (GuestThread() != main_thread) {
+    ++applied.pose_other_thread;
+    return;
+  }
+  ++applied.poses;
+  std::vector<std::pair<uint32_t, uint32_t>> bones;
+  BoneMatrices(base, object, geometry, bones);
+  const auto& f = tick::Current();
+  for (const auto& [m, bone] : bones) {
+    if (object_written.count(m) ||
+        std::any_of(out.begin(), out.end(), [&](const Written& w) { return w.address == m; }))
+      continue;
+    Matrix live;
+    ReadFloats(base, m, live.data(), 16);
+    BoneTrack& t = bone_tracks[m];
+    if (f.tick && t.tick != f.ticks) {
+      const bool continuing = t.tick + 1 == f.ticks && t.owner == object && t.bone == bone;
+      t.previous = continuing ? t.current : live;
+      t.current = live;
+      const bool cut = continuing && MatrixCut(t.previous, t.current);
+      if (cut) ++applied.bone_cuts;
+      t.valid = continuing && !cut && Finite(live.data(), 16);
+      t.owner = object;
+      t.bone = bone;
+      t.tick = f.ticks;
+    }
+    if (!t.valid || t.tick != f.ticks || t.previous == t.current) continue;
+    if (live != t.current) {  // Written outside the logic since the tick.
+      t.valid = false;
+      ++applied.bones_lost;
+      continue;
+    }
+    Written w;
+    w.address = m;
+    w.count = 16;
+    BlendMatrix(t.previous.data(), t.current.data(), f.alpha, w.value.data());
+    std::copy(live.begin(), live.end(), w.live.begin());
+    for (uint32_t i = 0; i < 16; ++i) PutFloat(base, m + 4 * i, w.value[i]);
+    out.push_back(w);
+    ++applied.bones;
+  }
+}
+
 // The start of the view block (82684050, r3 the view).
 void ViewStart(uint8_t* base) {
   candidates.swap(mounted);
   mounted.clear();
   collecting = Active();
   applied = {};
+  object_written.clear();
   if (!collecting) {
     tracks.clear();
+    bone_tracks.clear();
     camera = {};
     watching = false;
     std::lock_guard lock(freed_mutex);
     freed.clear();
     return;
   }
+  main_thread = GuestThread();
   watching = true;
   {
     std::vector<uint32_t> gone;
@@ -176,11 +298,15 @@ void ViewStart(uint8_t* base) {
     }
     if (overflow) {
       tracks.clear();
+      bone_tracks.clear();
       candidates.clear();
     } else if (!gone.empty()) {
       const std::unordered_set<uint32_t> set(gone.begin(), gone.end());
       for (auto it = tracks.begin(); it != tracks.end();)
         it = set.count(it->first) || set.count(it->second.matrix) ? tracks.erase(it) : std::next(it);
+      for (auto it = bone_tracks.begin(); it != bone_tracks.end();)
+        it = set.count(it->first) || set.count(it->second.owner) || set.count(it->second.bone) ? bone_tracks.erase(it)
+                                                                                                : std::next(it);
       std::erase_if(candidates, [&](uint32_t object) { return set.count(object) != 0; });
     }
   }
@@ -205,6 +331,8 @@ void ViewStart(uint8_t* base) {
       t.tick = tick;
     }
     for (auto it = tracks.begin(); it != tracks.end();) it = it->second.tick + 2 < tick ? tracks.erase(it) : std::next(it);
+    for (auto it = bone_tracks.begin(); it != bone_tracks.end();)
+      it = it->second.tick + 2 < tick ? bone_tracks.erase(it) : std::next(it);
   }
   const float alpha = f.alpha;
   std::unordered_set<uint32_t> matrices;
@@ -223,6 +351,7 @@ void ViewStart(uint8_t* base) {
     std::copy(t.current.begin(), t.current.end(), w.live.begin());
     for (uint32_t i = 0; i < 16; ++i) PutFloat(base, w.address + 4 * i, w.value[i]);
     written.push_back(w);
+    object_written.insert(w.address);
     ++applied.objects;
   }
   camera_entry_done = false;
@@ -246,12 +375,7 @@ void CameraEntry(uint8_t* base, uint32_t entry) {
 
 // After the delivery: the live transforms come back where nothing else wrote.
 void Restore(uint8_t* base) {
-  for (const auto& w : written) {
-    bool ours = true;
-    for (uint32_t i = 0; i < w.count && ours; ++i) ours = GetFloat(base, w.address + 4 * i) == w.value[i];
-    if (ours)
-      for (uint32_t i = 0; i < w.count; ++i) PutFloat(base, w.address + 4 * i, w.live[i]);
-  }
+  PutBack(base, written);
   written.clear();
   if (camera_pending) {
     Camera live;
@@ -272,6 +396,8 @@ bool Enabled() {
 }
 
 const Applied& LastApplied() { return applied; }
+
+uint32_t PoseObject() { return pose_object; }
 
 void NoteFree(uint32_t pointer) {
   if (!watching.load(std::memory_order_relaxed)) return;
@@ -310,4 +436,12 @@ REX_HOOK_RAW(sub_825E2A08) {
 REX_HOOK_RAW(sub_82659B88) {
   gpu::interpolation::CameraEntry(base, ctx.r3.u32);
   __imp__sub_82659B88(ctx, base);
+}
+REX_HOOK_RAW(sub_82580968) {
+  std::vector<gpu::interpolation::Written> pose;
+  gpu::interpolation::Pose(base, ctx.r3.u32, ctx.r4.u32, pose);
+  gpu::interpolation::pose_object = ctx.r3.u32;
+  __imp__sub_82580968(ctx, base);
+  gpu::interpolation::pose_object = 0;
+  gpu::interpolation::PutBack(base, pose);
 }

@@ -10,14 +10,24 @@
 //   8, 8-byte entries), those with dynamics, the objects the display mounted
 //   (825E2A08: flag 0x40000 without 0x200004), how many of them are outside
 //   the live list, the objects of the matrix probe, the tick period, the
-//   matrices interpolated and the object cuts of the tick;
+//   matrices interpolated and the object cuts of the tick, the bone matrices
+//   interpolated and the bone cuts of the tick (f, g);
 // - C: the camera of the view, position +476..+484 and direction +460..+468;
 // - O: each object with dynamics (flag 0x40000 at +4, dynamics [[object + 28]
 //   + 4] with 0x80000000): the position of its matrix, [object + 20] + 48..56,
-//   and its first row (+0..+8).
+//   and its first row (+0..+8);
+// - B: every 6th bone the display copies into the frame's packet (820E91E0)
+//   for a skinned object within 3 units of an object with dynamics (id
+//   owner/skinned object/bone, the owner the nearest object with dynamics):
+//   the world point of the bone (the translation of the copied matrix through
+//   [skinned object + 20] at the copy), that translation, and the distance
+//   to the owner (d).
 // And, every 120 main steps, native-d3d-motion with:
 // - the calls of the main step, the display and the camera since the last
 //   record;
+// - the bones copied into the packet (inside and outside the display, and
+//   from another call than 82580968's) and the interpolated poses
+//   (transforms.h);
 // - the vertex textures of the draws (the bone palettes, noted by
 //   BindTexture): their bytes are hashed at the start of the loop iteration,
 //   at the entry and exit of the display, after the delivery (8259FF40) and at

@@ -24,20 +24,37 @@
 // when it moved 10 units or turned 30 degrees in one tick (the thresholds of
 // 8267A2A0) or while the game's cut counter 82C0EB34 is set.
 //
+// The pose of the skinned meshes: the display (825802B0, the render of a
+// visual object) copies, for each bone of a mesh, its matrix relative to the
+// object into the frame's packet (82580968 -> [display state + 64] =
+// 820E91E0, the bone array at packet + 2900); the render thread turns that
+// array into the bone palette (82106BC8: the vertex constants, or the 1D
+// half-float texture of 820F3868). The bone matrices are the global matrices
+// of the bones' objects [bone + 20] (relative to [object + 20]) or matrices
+// of the object's bone array, written by the logic in the tick. Around each
+// copy (82580968), the matrices it reads go at the tick's alpha, tracked by
+// address with the same cuts as the objects, and come back right after it.
+//
 // On with the gate of REX_NATIVE_STATE_INTERPOLATION=1;
 // REX_NATIVE_INTERPOLATION_TRANSFORMS=0 leaves the frames between the ticks
-// as the last tick (the gate alone). Main thread.
+// as the last tick (the gate alone); REX_NATIVE_INTERPOLATION_BONES=0 leaves
+// the poses at the last tick. Main thread.
 #include <cstdint>
 
 namespace gpu::interpolation {
 bool Enabled();
 // The last view block: the matrices written (objects), the camera written,
-// and the cuts of the last tick.
+// and the cuts of the last tick; the poses copied on the main thread, the
+// bone matrices written, cut at the tick and lost (written outside the
+// logic), and the copies of another thread (not interpolated).
 struct Applied {
   uint32_t objects = 0, object_cuts = 0;
   bool camera = false, camera_cut = false;
+  uint32_t poses = 0, bones = 0, bone_cuts = 0, bones_lost = 0, pose_other_thread = 0;
 };
 const Applied& LastApplied();
+// The object of the pose copy running on this thread (82580968), or 0.
+uint32_t PoseObject();
 // A pointer the engine frees (820C0018, crash_dump.cpp), any thread: a freed
 // object leaves the tracks before the next write.
 void NoteFree(uint32_t pointer);

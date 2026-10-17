@@ -27,10 +27,14 @@
 extern "C" void __imp__sub_8265A058(PPCContext& __restrict, uint8_t*);
 extern "C" void __imp__sub_8267A2A0(PPCContext& __restrict, uint8_t*);
 extern "C" void __imp__sub_820FC008(PPCContext& __restrict, uint8_t*);
+extern "C" void __imp__sub_820E91E0(PPCContext& __restrict, uint8_t*);
 
 namespace gpu::motion {
 namespace {
 constexpr uint32_t kCutCounter = 0x82C0EB34;
+constexpr uint32_t kDisplayData = 0x82C0EFA4;    // +228: the object the display draws.
+constexpr uint32_t kPoseCopyReturn = 0x82580BF4;  // The bone copy's call in 82580968.
+constexpr uint32_t kBoneStride = 6;              // Every 6th bone of a palette goes to the record.
 enum Stage { kLoop, kDisplayIn, kDisplayOut, kDelivered, kListsIn, kListsOut, kStages };
 constexpr const char* kStageNames[kStages] = {"loop", "display_in", "display_out", "delivered", "lists_in",
                                               "lists_out"};
@@ -48,6 +52,21 @@ int64_t last_record = 0;
 bool in_display = false;
 uint32_t mounted = 0, mounted_outside = 0;
 std::unordered_set<uint32_t> live_set;
+// The objects with dynamics of this display and their positions.
+struct Point { uint32_t object; float x, y, z; };
+std::vector<Point> moving_points;
+// The bones copied into the frame's packet (820E91E0): inside the display,
+// outside it, from another call than the pose copy's, of an object with
+// dynamics, of a skinned object near one (kOwnerDistance), far from any; and
+// the record's bones of this display.
+constexpr float kOwnerDistance = 3.0f;
+uint64_t bone_copies = 0, bone_copies_outside = 0, bone_copies_other = 0;
+uint64_t bone_copies_moving = 0, bone_copies_near = 0, bone_copies_far = 0;
+uint32_t display_thread = 0;  // The guest thread of the display.
+struct BoneRow { uint32_t owner, object, bone; float x, y, z, a, b, c, distance; };
+std::vector<BoneRow> bone_rows;
+// The interpolation of the poses (transforms.h), summed over the displays.
+uint64_t poses = 0, bones_written = 0, bone_cuts = 0, bones_lost = 0, pose_other_thread = 0;
 // The vertex textures, by physical address (translation, main and render threads).
 struct Range {
   uint32_t bytes = 0, format = 0;
@@ -101,6 +120,58 @@ bool HasDynamics(uint8_t* base, uint32_t object) {
   return dynamics && (Get32(base, dynamics) & 0x80000000);
 }
 float Finite(float f) { return std::isfinite(f) ? f : 0.0f; }
+// A point through a matrix of the engine (row vectors; with the flag 8 at +64,
+// the rows scaled by +12, +28 and +44).
+void Through(uint8_t* base, uint32_t m, const float* in, float* out) {
+  const bool scaled = (Get32(base, m + 64) & 8) != 0;
+  for (uint32_t c = 0; c < 3; ++c) {
+    float v = GetFloat(base, m + 48 + 4 * c);
+    for (uint32_t r = 0; r < 3; ++r)
+      v += in[r] * GetFloat(base, m + 16 * r + 4 * c) * (scaled ? GetFloat(base, m + 16 * r + 12) : 1.0f);
+    out[c] = v;
+  }
+}
+
+// A bone copied into the frame's packet (820E91E0, r3 the bone, r4 its matrix
+// relative to the skinned object, the pose copy's (transforms.h) or [display
+// state + 228]): for every kBoneStride-th bone of a skinned object within
+// kOwnerDistance of an object with dynamics (the owner, the nearest), the
+// world point of the bone (its translation through the skinned object's
+// matrix at the copy), that translation and the distance to the owner.
+void BoneCopy(uint8_t* base, uint32_t bone, uint32_t matrix, uint32_t return_address) {
+  if (!in_display || GuestThread() != display_thread) {
+    ++bone_copies_outside;
+    return;
+  }
+  ++bone_copies;
+  if (return_address != kPoseCopyReturn) ++bone_copies_other;
+  const uint32_t display = Get32(base, kDisplayData);
+  uint32_t object = interpolation::PoseObject();
+  if (!object && display) object = Get32(base, display + 228);
+  const uint32_t m = object ? Get32(base, object + 20) : 0;
+  if (!m) return;
+  const float at[3] = {GetFloat(base, m + 48), GetFloat(base, m + 52), GetFloat(base, m + 56)};
+  uint32_t owner = 0;
+  float distance = kOwnerDistance;
+  for (const auto& p : moving_points) {
+    const float d = p.object == object ? 0.0f : std::hypot(at[0] - p.x, at[1] - p.y, at[2] - p.z);
+    if (d <= distance) {
+      distance = d;
+      owner = p.object;
+    }
+  }
+  if (!owner) {
+    ++bone_copies_far;
+    return;
+  }
+  ++(owner == object ? bone_copies_moving : bone_copies_near);
+  if (!file || bone % kBoneStride) return;
+  const float local[3] = {GetFloat(base, matrix + 48), GetFloat(base, matrix + 52), GetFloat(base, matrix + 56)};
+  float world[3];
+  Through(base, m, local, world);
+  bone_rows.push_back({owner, object, bone, Finite(world[0]), Finite(world[1]), Finite(world[2]), Finite(local[0]),
+                       Finite(local[1]), Finite(local[2]), Finite(distance)});
+}
 
 int64_t Microseconds() {
   LARGE_INTEGER now{};
@@ -206,30 +277,43 @@ void Display(PPCContext& ctx, uint8_t* base) {
       PutFloat(base, o.matrix + 52, raised.back().second + probe_units);
     }
   mounted = mounted_outside = 0;
+  moving_points.clear();
+  for (const auto& o : moving) moving_points.push_back({o.object, o.x, o.y, o.z});
+  bone_rows.clear();
+  display_thread = GuestThread();
   in_display = true;
   __imp__sub_8265A058(ctx, base);
   in_display = false;
   for (const auto& [address, value] : raised) PutFloat(base, address, value);
   StageHash(base, kDisplayOut);
   ProbeStage(base, kDisplayExit);
+  const auto& applied = interpolation::LastApplied();
+  poses += applied.poses;
+  bones_written += applied.bones;
+  bone_cuts += applied.bone_cuts;
+  bones_lost += applied.bones_lost;
+  pose_other_thread += applied.pose_other_thread;
   if (!file) return;
   const int64_t us = Microseconds();
   const uint32_t cut = Get32(base, kCutCounter);
-  const auto& applied = interpolation::LastApplied();
   const int camera_flags = (applied.camera ? 1 : 0) | (applied.camera_cut ? 4 : 0);
-  std::string rows = fmt::format("{},{},{},{},{},{:.4f},{},F,{},{},{},{},{},{},{:.6f},{},{}\n", displays, us, f.index,
-                                 int(f.gate), int(f.tick), f.alpha, cut, camera_flags, live.size(), moving.size(),
-                                 mounted, mounted_outside, raised.size(), f.period, applied.objects,
-                                 applied.object_cuts);
+  std::string rows = fmt::format("{},{},{},{},{},{:.4f},{},F,{},{},{},{},{},{},{:.6f},{},{},{},{}\n", displays, us,
+                                 f.index, int(f.gate), int(f.tick), f.alpha, cut, camera_flags, live.size(),
+                                 moving.size(), mounted, mounted_outside, raised.size(), f.period, applied.objects,
+                                 applied.object_cuts, applied.bones, applied.bone_cuts);
   if (view)
-    rows += fmt::format("{},{},{},{},{},{:.4f},{},C,{:08X},{:.5f},{:.5f},{:.5f},{:.5f},{:.5f},{:.5f},0,0\n", displays, us,
-                        f.index, int(f.gate), int(f.tick), f.alpha, cut, view, Finite(GetFloat(base, view + 476)),
+    rows += fmt::format("{},{},{},{},{},{:.4f},{},C,{:08X},{:.5f},{:.5f},{:.5f},{:.5f},{:.5f},{:.5f},0,0,0,0\n", displays,
+                        us, f.index, int(f.gate), int(f.tick), f.alpha, cut, view, Finite(GetFloat(base, view + 476)),
                         Finite(GetFloat(base, view + 480)), Finite(GetFloat(base, view + 484)),
                         Finite(GetFloat(base, view + 460)), Finite(GetFloat(base, view + 464)),
                         Finite(GetFloat(base, view + 468)));
   for (const auto& o : moving)
-    rows += fmt::format("{},{},{},{},{},{:.4f},{},O,{:08X},{:.5f},{:.5f},{:.5f},{:.5f},{:.5f},{:.5f},0,0\n", displays, us,
-                        f.index, int(f.gate), int(f.tick), f.alpha, cut, o.object, o.x, o.y, o.z, o.a, o.b, o.c);
+    rows += fmt::format("{},{},{},{},{},{:.4f},{},O,{:08X},{:.5f},{:.5f},{:.5f},{:.5f},{:.5f},{:.5f},0,0,0,0\n", displays,
+                        us, f.index, int(f.gate), int(f.tick), f.alpha, cut, o.object, o.x, o.y, o.z, o.a, o.b, o.c);
+  for (const auto& b : bone_rows)
+    rows += fmt::format("{},{},{},{},{},{:.4f},{},B,{:08X}/{:08X}/{},{:.5f},{:.5f},{:.5f},{:.5f},{:.5f},{:.5f},{:.4f},0,0,0\n",
+                        displays, us, f.index, int(f.gate), int(f.tick), f.alpha, cut, b.owner, b.object, b.bone, b.x,
+                        b.y, b.z, b.a, b.b, b.c, b.distance);
   std::fputs(rows.c_str(), file);
   if (displays % 60 == 0) std::fflush(file);
 }
@@ -275,14 +359,19 @@ void Record(uint8_t* base) {
       "\"displays_per_s\":{:.3f},\"cameras_per_s\":{:.3f},\"fixed\":{},\"period\":{:.6f},\"title_interval\":{},"
       "\"tick\":{{\"index\":{},\"gate\":{},\"ticks\":{},\"skipped\":{}}},\"mounts\":{},\"probe_units\":{},"
       "\"vertex_textures\":{{\"ranges\":{},\"notes\":{},\"distinct\":{},\"hashed\":{},\"format_bytes_count\":[{}],"
-      "\"changes_tick\":{{{}}},\"changes_without_tick\":{{{}}}}},\"probe\":{{\"pointers\":{},\"stages\":[{}]}}",
+      "\"changes_tick\":{{{}}},\"changes_without_tick\":{{{}}}}},\"probe\":{{\"pointers\":{},\"stages\":[{}]}},"
+      "\"bones\":{{\"copies\":{},\"copies_outside_display\":{},\"copies_other_call\":{},\"copies_moving\":{},"
+      "\"copies_near\":{},\"copies_far\":{},\"poses\":{},\"written\":{},\"cuts\":{},\"lost\":{},"
+      "\"poses_other_thread\":{}}}",
       main_steps, displays, cameras, seconds, seconds > 0 ? double(main_steps - last_main_steps) / seconds : 0.0,
       seconds > 0 ? double(displays - last_displays) / seconds : 0.0,
       seconds > 0 ? double(cameras - last_cameras) / seconds : 0.0, time ? Get32(base, time + 72) : 0,
       time ? Finite(GetFloat(base, time + 76)) : 0.0f, context ? Get32(base, context + 448) : 0,
       tick::Current().index, tick::Current().gate, tick::Current().ticks, tick::Current().skipped, mounts, probe_units,
       range_count, note_count, distinct_count, hashed, formats, pairs[1], pairs[0],
-      view_pointers.empty() ? std::string("null") : view_pointers, probe));
+      view_pointers.empty() ? std::string("null") : view_pointers, probe, bone_copies, bone_copies_outside,
+      bone_copies_other, bone_copies_moving, bone_copies_near, bone_copies_far, poses, bones_written, bone_cuts,
+      bones_lost, pose_other_thread));
   last_record = us;
   last_displays = displays;
   last_cameras = cameras;
@@ -299,7 +388,7 @@ bool Enabled() {
         probe_units = std::strtof(probe, nullptr);
       if (const char* dir = std::getenv("REX_NATIVE_FRAME_DIR"); dir && *dir) {
         file = std::fopen(fmt::format("{}/motion.csv", dir).c_str(), "w");
-        if (file) std::fputs("display,us,iteration,gate,tick,alpha,cut,kind,id,x,y,z,a,b,c,d,e\n", file);
+        if (file) std::fputs("display,us,iteration,gate,tick,alpha,cut,kind,id,x,y,z,a,b,c,d,e,f,g\n", file);
       }
     }
   }
@@ -371,4 +460,8 @@ REX_HOOK_RAW(sub_820FC008) {
   if (Enabled()) StageHash(base, kListsIn);
   __imp__sub_820FC008(ctx, base);
   if (Enabled()) StageHash(base, kListsOut);
+}
+REX_HOOK_RAW(sub_820E91E0) {
+  if (Enabled()) BoneCopy(base, ctx.r3.u32, ctx.r4.u32, uint32_t(ctx.lr));
+  __imp__sub_820E91E0(ctx, base);
 }
