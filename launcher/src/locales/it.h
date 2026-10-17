@@ -4,57 +4,44 @@ namespace localization_strings {
 
 inline constexpr const char* kIt[] = {
     "Naruto: Rise of a Ninja",  // WindowTitle
-    "NARUTO: RISE OF A NINJA",  // AppTitle
-    "Versione ricompilata per PC (ReXGlue)",  // AppSubtitle
     "GIOCA",  // TabPlay
     "OPZIONI",  // TabSettings
     "FILE DI GIOCO",  // TabGameFiles
-    "Qualità grafica",  // GroupGraphics
+    "Qualità",  // GroupQuality
     "Controlli",  // GroupControls
-    "Schermo:",  // DisplayLabel
-    "Formato schermo:",  // AspectLabel
+    "Formato schermo",  // AspectLabel
     "16:9 - Standard (originale)",  // Aspect16x9
-    "21:9 - UltraWide (3440x1440)",  // Aspect21x9
-    "32:9 - Super UltraWide (5120x1440)",  // Aspect32x9
-    "Regola il campo visivo orizzontale della telecamera 3D senza allungare o deformare i personaggi.",  // AspectTooltip
-    "Risoluzione:",  // ResolutionLabel
-    "1280x720 - 1x (originale)",  // Res1x
-    "2560x1440 - 2x (consigliata)",  // Res2x
-    "3840x2160 - 3x (4K UHD)",  // Res3x
-    "5120x2880 - 4x (5K UHD)",  // Res4x
-    "Renderer:",  // RendererLabel
-    "Filtro texture:",  // TextureFilteringLabel
+    "21:9 - UltraWide",  // Aspect21x9
+    "32:9 - Super UltraWide",  // Aspect32x9
+    "Regola il campo visivo orizzontale della telecamera 3D senza allungare o deformare i personaggi.",  // AspectDescription
+    "Risoluzione",  // ResolutionLabel
+    "Renderer",  // RendererLabel
+    "Filtro texture",  // TextureFilteringLabel
     "Predefinito",  // AnisoDefault
-    "Antialiasing:",  // AntiAliasingLabel
-    "Disattivato",  // AaOff
-    "FXAA",  // AaFxaa
-    "FXAA estremo",  // AaFxaaExtreme
-    "Post-processing:",  // PostProcessingLabel
+    "FXAA",  // FxaaLabel
+    "Disattivato",  // FxaaOff
+    "Normale",  // FxaaNormal
+    "Estremo",  // FxaaExtreme
+    "Post-processing",  // PostProcessingLabel
     "Bilineare (predefinito)",  // PostBilinear
     "CAS (nitidezza)",  // PostCas
     "FSR EASU (ridimensionamento)",  // PostFsr
     "Dithering",  // DitherLabel
     "Indicatore FPS",  // FpsOverlayLabel
     "Schermo intero",  // FullscreenLabel
-    "VSync (limite a 60 Hz)",  // VsyncLabel
-    "Lascia attiva questa opzione per mantenere la velocità corretta delle animazioni e della fisica.",  // VsyncTooltip
+    "VSync",  // VsyncLabel
+    "Lascia attiva questa opzione per mantenere la velocità corretta delle animazioni e della fisica.",  // VsyncDescription
     "Usa SDL per i controller (Xbox / PlayStation)",  // SdlInputLabel
-    "Controller:",  // ControllerStatusLabel
+    "Controller",  // ControllerLabel
     "Nessun controller rilevato (tastiera e mouse)",  // NoControllerDetected
     "Salta i video introduttivi (loghi Ubisoft)",  // SkipIntroLabel
-    "Lingua:",  // LanguageLabel
     "GIOCA",  // BtnPlay
     "Opzioni consigliate",  // BtnResetRecommended
-    "Salva opzioni",  // BtnSaveSettings
     "Apri cartella del gioco",  // BtnOpenFolder
     "Le opzioni vengono applicate all'avvio del gioco.",  // SettingsAppliedNotice
-    "Opzioni salvate.",  // SettingsSavedNotice
     "Gioco pronto",  // StatusReady
     "File di gioco non trovati",  // StatusNotFound
-    "File di gioco trovati in: %s",  // FilesFoundIn
     "Inserisci i file estratti da Xbox 360 in 'game' oppure seleziona la cartella in FILE DI GIOCO. L'estrazione ISO è disponibile nell'installer.",  // FilesMissingDesc
-    "Servono i file originali estratti del gioco Xbox 360. Estrai l'ISO con l'installer oppure copia i file in 'game'.",  // FilesNotice
-    "Percorso attuale: %s",  // CurrentPathLabel
     "(Nessuna cartella trovata)",  // NoneDetected
     "Seleziona cartella del gioco estratto...",  // BtnSelectFolder
     "Ripristina percorso predefinito",  // BtnResetDefault
@@ -68,20 +55,16 @@ inline constexpr const char* kIt[] = {
     "Torna al Villaggio della Foglia.",  // PlayIntro
     "File di gioco rilevati. Puoi giocare.",  // ReadyDetail
     "Gestisci i file di gioco",  // ManageFiles
-    "Adatta il gioco al tuo PC.",  // SettingsIntro
     "Collega i tuoi file originali alla versione per PC.",  // FilesIntro
     "Cartella del gioco",  // FolderHeading
     "Seleziona la cartella contenente default.xex. I file originali non vengono spostati né eliminati.",  // FolderHint
     "Hai un'ISO?",  // SetupHeading
     "Esegui di nuovo l'installer per estrarre la tua ISO originale di Xbox 360. L'importazione ISO è disponibile nell'installer.",  // SetupHint
     "Opzioni consigliate applicate.",  // RecommendedApplied
-    "Impossibile salvare. Controlla i permessi di scrittura della cartella.",  // SaveFailed
     "Manca l'eseguibile del gioco per PC. Reinstalla la versione per PC.",  // ExeMissing
     "Versione per PC non trovata",  // ExeMissingStatus
     "File di gioco rilevati",  // FilesDetected
-    "Chiudi launcher",  // Exit
     "DLC",  // TabDlc
-    "Contenuti scaricabili",  // DlcHeading
     "Installa i pacchetti di personaggi DLC per Naruto: Rise of a Ninja.",  // DlcIntro
     "DLC installati",  // DlcInstalledHeading
     "Nessun DLC installato.",  // DlcNoInstalled
@@ -145,38 +128,52 @@ inline constexpr const char* kIt[] = {
     "Disinstallazione completata. Alcuni file potrebbero restare fino alla chiusura di questa finestra.",  // UnDone
     "Disinstallazione non riuscita: %s",  // UnFailed
     "Gioco",  // GroupGame
-    "Lingua del gioco:",  // GameLanguageLabel
+    "Lingua del gioco",  // GameLanguageLabel
     "Inglese",  // GameLanguageEnglish
     "Francese",  // GameLanguageFrench
     "Tedesco",  // GameLanguageGerman
     "Spagnolo",  // GameLanguageSpanish
     "Italiano",  // GameLanguageItalian
     "Personalizzata (%u)",  // GameLanguageCustom
-    "Applicata all'avvio del gioco. I testi e le voci disponibili dipendono dai file di gioco.",  // GameLanguageHint
+    "Applicata all'avvio del gioco. I testi e le voci disponibili dipendono dai file di gioco.",  // GameLanguageDescription
     "Lingua dell'interfaccia del launcher",  // LauncherLanguageTooltip
     "Xenos (GPU emulata)",  // RendererXenos
     "Nativo (Direct3D 12)",  // RendererNative
-    "Xenos emula la GPU di Xbox 360 e copre tutto il gioco. Il renderer nativo disegna il gioco direttamente con Direct3D 12: più veloce e con più opzioni, ma ancora in prova in alcune parti del gioco.",  // RendererTooltip
-    "Non disponibile con il renderer nativo.",  // NativeUnavailableTooltip
-    "1920x1080 - 1,5x (Full HD)",  // Res1_5x
-    "MSAA:",  // MsaaLabel
+    "Xenos emula la GPU di Xbox 360 e copre tutto il gioco. Il renderer nativo disegna il gioco direttamente con Direct3D 12: più veloce e con più opzioni, ma ancora in prova in alcune parti del gioco.",  // RendererDescription
+    "Non disponibile con il renderer nativo. Scegli Xenos in Renderer per usarlo.",  // XenosOnlyReason
+    "MSAA",  // MsaaLabel
     "4x (originale)",  // MsaaOriginal
-    "Multicampionamento delle scene 3D del gioco. 8x richiede una GPU più potente.",  // MsaaTooltip
+    "Multicampionamento delle scene 3D del gioco. 8x richiede una GPU più potente.",  // MsaaDescription
     "AA della trasparenza",  // TransparencyAaLabel
-    "Ammorbidisce i bordi di fogliame, recinzioni e altre texture ritagliate (alpha to coverage).",  // TransparencyAaTooltip
+    "Ammorbidisce i bordi di fogliame, recinzioni e altre texture ritagliate (alpha to coverage).",  // TransparencyAaDescription
     "60 FPS",  // UnlockFpsLabel
-    "Esegue i menu e il mondo aperto a 60 FPS invece di 30 (i combattimenti sono già a 60). Richiede una CPU più veloce.",  // UnlockFpsTooltip
-    "Luminosità:",  // BrightnessLabel
-    "50 è la luminosità originale del gioco.",  // BrightnessTooltip
-    "Latenza dei fotogrammi:",  // FrameLatencyLabel
+    "Esegue i menu e il mondo aperto a 60 FPS invece di 30 (i combattimenti sono già a 60). Richiede una CPU più veloce.",  // UnlockFpsDescription
+    "Luminosità",  // BrightnessLabel
+    "50 è la luminosità originale del gioco.",  // BrightnessDescription
+    "Latenza dei fotogrammi",  // FrameLatencyLabel
     "1 (minima)",  // FrameLatencyLowest
-    "Fotogrammi in coda prima della visualizzazione. 1 ha il ritardo di input più basso; 2 o 3 possono uniformare tempi dei fotogrammi irregolari.",  // FrameLatencyTooltip
+    "Fotogrammi in coda prima della visualizzazione. 1 ha il ritardo di input più basso; 2 o 3 possono uniformare tempi dei fotogrammi irregolari.",  // FrameLatencyDescription
     "Triplo buffer",  // TripleBufferingLabel
-    "Tre buffer di visualizzazione invece di due.",  // TripleBufferingTooltip
-    "Sincronizza la presentazione con lo schermo. Con il renderer nativo, la velocità del gioco non dipende dal VSync.",  // VsyncNativeTooltip
-    "Scheda video:",  // GraphicsDeviceLabel
+    "Tre buffer di visualizzazione invece di due.",  // TripleBufferingDescription
+    "Sincronizza la presentazione con lo schermo. Con il renderer nativo, la velocità del gioco non dipende dal VSync.",  // VsyncNativeDescription
+    "Scheda video",  // GraphicsDeviceLabel
     "Automatica",  // GraphicsDeviceAuto
-    "La scheda video su cui gira il gioco. Automatica lascia la scelta al renderer. Sui portatili con due schede video, scegli quella dedicata (NVIDIA o AMD).",  // GraphicsDeviceTooltip
+    "La scheda video su cui gira il gioco. Automatica lascia la scelta al renderer. Sui portatili con due schede video, scegli quella dedicata (NVIDIA o AMD).",  // GraphicsDeviceDescription
+    "Schermo",  // GroupDisplay
+    "Avanzate",  // GroupAdvanced
+    "solo Xenos",  // XenosOnlyTag
+    "solo nativo",  // NativeOnlyTag
+    "Solo con il renderer nativo. Scegli Nativo in Renderer per usarlo.",  // NativeOnlyReason
+    "La risoluzione a cui viene disegnato il gioco, in multipli dei 1280×720 originali. Valori più alti sono più nitidi e richiedono una scheda video più potente.",  // ResolutionDescription
+    "Il filtro anisotropico mantiene nitide le texture delle superfici viste di sbieco, come pavimenti e strade.",  // TextureFilteringDescription
+    "Ammorbidisce i bordi seghettati filtrando l'immagine finale. Estremo leviga di più e può sfocare i dettagli fini.",  // FxaaDescription
+    "Come l'immagine viene adattata allo schermo. CAS aumenta la nitidezza, FSR la ingrandisce con nitidezza e Bilineare la lascia morbida.",  // PostProcessingDescription
+    "Aggiunge un rumore fine che nasconde le bande di colore nelle sfumature.",  // DitherDescription
+    "Mostra frequenza e tempo dei fotogrammi in un angolo dello schermo. F1 lo attiva o disattiva durante il gioco.",  // FpsOverlayDescription
+    "Avvia il gioco a schermo intero. Disattivato, gira in una finestra.",  // FullscreenDescription
+    "Salta i loghi mostrati all'avvio del gioco. Il filmato d'apertura resta.",  // SkipIntroDescription
+    "Legge i controller tramite SDL, che riconosce controller Xbox, PlayStation e altri. Disattivato, il gioco usa XInput, che riconosce solo controller compatibili con Xbox.",  // SdlInputDescription
+    "Il controller collegato ora, con il nome che gli dà SDL.",  // ControllerDescription
 };
 
 }  // namespace localization_strings

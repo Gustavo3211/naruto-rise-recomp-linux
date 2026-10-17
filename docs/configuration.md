@@ -4,7 +4,19 @@
 
 ## Where to configure settings
 
-Use the launcher whenever possible. It reads and saves `narutorise.toml` **next to the executables**. Close both the game and launcher before editing the file manually.
+Use the launcher whenever possible. It reads and saves `narutorise.toml` **next to the executables** when you play or close it. Close both the game and launcher before editing the file manually.
+
+The launcher's **Settings** tab lists its groups on the left; the panel below the options describes the option under the mouse:
+
+| Group | Options |
+| --- | --- |
+| Game | Game language, skip intro videos |
+| Display | Renderer, graphics card, resolution, aspect ratio, brightness, VSync, 60 FPS, fullscreen |
+| Quality | MSAA, FXAA, post-processing (CAS/FSR), texture filtering, transparency AA, dithering |
+| Controls | SDL controllers, the connected controller |
+| Advanced | Frame latency, triple buffering, FPS overlay |
+
+**Reset to Recommended** restores the recommended values; the launcher shows the game's version under the cover art.
 
 During development, `app/narutorise.toml` is the template copied by CMake into the build output. Rebuilding can overwrite preferences saved there; make persistent development changes in the template or keep a backup of your configuration.
 
@@ -57,7 +69,7 @@ ultrawide_target_aspect = 2.3889
 fullscreen = true
 ```
 
-The current template has **ultrawide enabled at `2.3889`**; select 16:9 for standard widescreen monitors. This is an anamorphic implementation: it does not imply individual HUD repositioning or fixes for every video and cutscene. The patch validates the original constant before changing it and logs any mismatch.
+The template and **Reset to Recommended** use **16:9 (`0.0`)**; select 21:9 or 32:9 for ultrawide monitors. This is an anamorphic implementation: it does not imply individual HUD repositioning or fixes for every video and cutscene. The patch validates the original constant before changing it and logs any mismatch.
 
 ## Main settings
 
@@ -67,8 +79,8 @@ The values below match `app/narutorise.toml` at the time of the project analysis
 | --- | --- | --- |
 | `launcher_language` | `"en"` | Launcher interface; see the seven language codes above |
 | `user_language` | `1` | Game language; see the language codes above |
-| `resolution_scale` | `2` | Internal scale; the launcher offers 1 through 4 |
-| `draw_resolution_scale_x`, `draw_resolution_scale_y` | `2`, `2` | Draw scales, synchronized by the launcher |
+| `resolution_scale` | `1` | Internal scale, the SDK's (and Xenia's) default; the launcher offers 1× through 4× |
+| `draw_resolution_scale_x`, `draw_resolution_scale_y` | `1`, `1` | Draw scales, synchronized by the launcher |
 | `graphics_device` | `""` | Graphics card by the name Windows gives it (both renderers); empty is automatic. See [Graphics card](#graphics-card) |
 | `fullscreen` | `true` | Fullscreen mode |
 | `vsync`, `d3d12_host_vsync` | `true`, `true` | Vertical synchronization |
@@ -87,14 +99,14 @@ The launcher provides anisotropic filtering up to 16×. The internal `anisotropi
 
 ## Renderer
 
-Builds with the native renderer (`NARUTORISE_NATIVE_RENDERER_BOOTSTRAP=ON`, see [Build and run](build-and-run.md)) carry two renderers in the same executable, chosen at launch in the launcher (**Settings → Renderer**) or in `narutorise.toml`:
+Builds with the native renderer (`NARUTORISE_NATIVE_RENDERER_BOOTSTRAP=ON`, see [Build and run](build-and-run.md)) carry two renderers in the same executable, chosen at launch in the launcher (**Settings → Display → Renderer**) or in `narutorise.toml`:
 
 | Renderer | `renderer` |
 | --- | --- |
 | Xenos, the emulated Xbox 360 GPU of the SDK (default) | `"xenos"` |
 | Native, the game's Direct3D drawn with Direct3D 12 | `"native"` |
 
-Builds without the native renderer ignore the key and always use Xenos. The launcher shows the options of the selected renderer:
+Builds without the native renderer ignore the key, always use Xenos and leave the native options out of the launcher. Otherwise the launcher shows the options of both renderers: those the selected renderer does not use are greyed out and tagged, and the description panel says why.
 
 | Option | Xenos | Native |
 | --- | --- | --- |
@@ -120,7 +132,7 @@ Native renderer options:
 
 ## Graphics card
 
-The launcher lists the graphics cards that run Direct3D 12 (**Settings → Graphics card**) and saves the chosen one by name in `graphics_device`, as Unleashed Recompiled does with `GraphicsDevice`. Both renderers honor it:
+The launcher lists the graphics cards that run Direct3D 12 (**Settings → Display → Graphics card**) and saves the chosen one by name in `graphics_device`, as Unleashed Recompiled does with `GraphicsDevice`. Both renderers honor it:
 
 - **Automatic** (`graphics_device = ""`): the native renderer takes the card with the most dedicated video memory; Xenos takes the first card Windows lists.
 - **A named card:** the native renderer asks Plume for it; Xenos sets the SDK's `d3d12_adapter` to its index for that launch only. A name that is no longer present (a removed card) falls back to automatic, with a warning in the log.
