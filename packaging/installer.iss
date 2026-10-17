@@ -97,7 +97,7 @@ Source: "{#PackageDir}\shader_cache\555307E5.*"; DestDir: "{app}\shader_cache"; 
 Source: "..\launcher\assets\cover.jpg"; DestDir: "{app}\assets"; Flags: ignoreversion
 Source: "..\launcher\assets\narutorise.ico"; DestDir: "{app}\assets"; Flags: ignoreversion
 Source: "..\launcher\assets\fonts\*"; DestDir: "{app}\assets\fonts"; Flags: ignoreversion
-Source: "..\tools\extract-xiso\LICENSE.TXT"; DestDir: "{app}\licenses"; DestName: "extract-xiso.txt"; Flags: ignoreversion
+Source: "{#PackageDir}\licenses\*"; DestDir: "{app}\licenses"; Flags: ignoreversion
 Source: "{#PackageDir}\narutorise.toml"; DestDir: "{app}"; Flags: onlyifdoesntexist uninsneveruninstall
 Source: "..\tools\extract-xiso\extract-xiso.exe"; Flags: dontcopy
 Source: "{#HelperPath}"; Flags: dontcopy

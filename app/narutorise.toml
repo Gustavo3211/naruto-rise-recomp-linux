@@ -1,6 +1,12 @@
 # narutorise - runtime configuration (auto-read on startup)
 
 gpu_plugin = "xenos"
+# Renderer: "xenos" (the emulated GPU) or "native" (Direct3D 12), in builds
+# with the native renderer.
+renderer = "xenos"
+# Graphics card by its name as Windows lists it, for both renderers;
+# empty = automatic.
+graphics_device = ""
 d3d12_readback_resolve = true
 skip_intro_videos = true
 
@@ -36,6 +42,19 @@ present_effect = "cas"
 present_dither = false
 
 show_fps_overlay = false
+
+# Native renderer only (ignored by the Xenos renderer).
+# msaa_samples: 0 = the game's 4x, or 2, 4, 8.
+msaa_samples = 0
+transparency_antialiasing = false
+# 60 fps in the menus and the open world (the fights already run at 60).
+unlock_fps = false
+# 0.5 = the game's brightness.
+brightness = 0.5
+# Fractional internal scale (1.5 = 1920x1080); 0 = resolution_scale.
+internal_resolution_scale = 0.0
+max_frame_latency = 1
+triple_buffering = false
 
 # Anamorphic Ultrawide (Hells Gate / Xenia Canary style patch).
 # 0.0 = native 16:9; 2.3889 = 21:9 (3440x1440); 3.5556 = 32:9.

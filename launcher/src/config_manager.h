@@ -4,8 +4,21 @@
 #include <filesystem>
 #include <string>
 
+// The game executable next to the launcher carries the native renderer next to
+// the Xenos plugin (NARUTORISE_NATIVE_RENDERER_BOOTSTRAP builds).
+#ifdef NARUTORISE_LAUNCHER_NATIVE_RENDERER
+inline constexpr bool kNativeRendererBuilt = true;
+#else
+inline constexpr bool kNativeRendererBuilt = false;
+#endif
+
 struct GameConfig {
   std::string gpu_plugin = "xenos";
+  // "xenos" (the emulated GPU) or "native" (Direct3D 12); saved only when the
+  // executable carries the native renderer.
+  std::string renderer = "xenos";
+  // The graphics card by its name, for both renderers; empty = automatic.
+  std::string graphics_device = "";
   bool d3d12_readback_resolve = true;
   bool skip_intro_videos = true;
 
@@ -31,6 +44,15 @@ struct GameConfig {
 
   int anisotropic_override = 5;
 
+  // Native renderer only, saved with the renderer choice.
+  int msaa_samples = 0;  // 0 = the game's 4x, or 2, 4, 8
+  bool transparency_antialiasing = false;
+  bool unlock_fps = false;
+  double brightness = 0.5;  // 0.5 = the game's
+  double internal_resolution_scale = 0.0;  // fractional scale; 0 = resolution_scale
+  int max_frame_latency = 1;
+  bool triple_buffering = false;
+
   std::string swap_post_effect = "fxaa";
   std::string present_effect = "cas";
   bool present_dither = false;
@@ -40,6 +62,9 @@ struct GameConfig {
   double ultrawide_target_aspect = 2.3889;
 
   std::string custom_game_root = "";
+  // Saves and user content; empty keeps Documents/narutorise. Read only: the
+  // launcher passes it to the game on the command line (main.cpp).
+  std::string user_data_root = "";
 
   // Launcher interface: en (default), pt_BR, fr, de, es, it, ru.
   std::string launcher_language = "en";

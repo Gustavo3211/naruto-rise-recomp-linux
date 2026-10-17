@@ -103,4 +103,10 @@ Keep game files, content packages, and generated recompiled code out of commits.
 - The Xenia Canary community and Hells Gate Recomp, references cited in the ultrawide implementation.
 - Ubisoft Montreal, for the original game. [Logo source](docs/assets/README.md).
 
-Dependency licenses are located in their respective directories.
+## License
+
+The source code of this port is licensed under the [MIT License](LICENSE).
+
+Third-party code keeps its own license: the ReXGlue SDK (`sdk/`, BSD-3-Clause) and its dependencies, the XenosRecomp fork (`tools/xenosrecomp/`, MIT), extract-xiso (`tools/extract-xiso/`), and the Lato fonts (`launcher/assets/fonts/`, OFL-1.1). Release packages include the notices of every component they ship in `licenses/` ([component list](packaging/third-party-licenses.psd1)).
+
+Naruto: Rise of a Ninja, its content, and its artwork and trademarks, including the game artwork in `launcher/assets/` and `docs/assets/`, belong to their respective owners and are not covered by this license. No game data is distributed with this project.

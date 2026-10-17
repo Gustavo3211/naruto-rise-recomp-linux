@@ -108,6 +108,8 @@ cmake --build app/out/build/win-amd64-release
 
 The complete build includes the game, launcher, installer helper, assets, configuration, and shader cache. The extractor is required by the helper target even if you only intend to run the game.
 
+**Native renderer (optional).** Configure with `-DNARUTORISE_NATIVE_RENDERER_BOOTSTRAP=ON -DNATIVE_RENDERER_PLUME_SOURCE=<Plume checkout>`, with the XenosRecomp submodules in `tools/xenosrecomp/thirdparty` and `game/xeshader.sdb` in place: the build generates the native shader cache from the local game files and embeds it in `narutorise.exe`. The executable keeps the Xenos plugin, and the launcher lets you choose the renderer ([Renderer](configuration.md#renderer)). The spec constant variants of the shaders are linked during the build, so the native renderer needs no shader compiler at run time. The build keeps the translated and compiled shaders in `out/shader-store` (`NARUTORISE_SHADER_STORE`; empty disables it) and reuses them while the game files, the XenosRecomp fork and DXC do not change; deleting the folder only makes the next build slower.
+
 Main files in `app/out/build/win-amd64-release/`:
 
 ```text

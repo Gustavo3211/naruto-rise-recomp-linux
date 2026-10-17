@@ -10,6 +10,8 @@ See also: [Build and run](../docs/build-and-run.md), [DLCs](../docs/dlc.md), and
 - **`installer.iss`**: [Inno Setup](https://jrsoftware.org/isdl.php) script to build the standard Windows setup wizard (`NarutoRiseInstaller.exe`).
 - **`install.ps1`**: Standalone helper script for portable zip users to generate Desktop and Start Menu shortcuts with one click.
 - **`version.iss`**: Default release version; override using `-Version` without modifying source.
+- **`third-party-licenses.psd1`**: Third-party components the release ships, with their licenses. `package-release.ps1` copies each license text and the project `LICENSE` into the package's `licenses/` folder and writes its `README.txt` index, including the source revisions of the LGPL libraries in `rexruntime.dll`. Update it when a shipped dependency changes.
+- **`licenses/`**: Verbatim copies of license texts that exist only inside a source header or the upstream repository.
 - **`tests/`**: Synthetic ISO helper tests and isolated Inno install/uninstall tests.
 
 ---

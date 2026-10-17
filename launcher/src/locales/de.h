@@ -154,6 +154,29 @@ inline constexpr const char* kDe[] = {
     "Benutzerdefiniert (%u)",  // GameLanguageCustom
     "Wird beim nächsten Spielstart angewendet. Verfügbare Texte und Stimmen hängen von deinen Spieldateien ab.",  // GameLanguageHint
     "Sprache der Launcher-Oberfläche",  // LauncherLanguageTooltip
+    "Xenos (emulierte GPU)",  // RendererXenos
+    "Nativ (Direct3D 12)",  // RendererNative
+    "Xenos emuliert die GPU der Xbox 360 und deckt das ganze Spiel ab. Der native Renderer zeichnet das Spiel direkt mit Direct3D 12: schneller und mit mehr Optionen, aber in Teilen des Spiels noch im Test.",  // RendererTooltip
+    "Mit dem nativen Renderer nicht verfügbar.",  // NativeUnavailableTooltip
+    "1920x1080 - 1,5x (Full HD)",  // Res1_5x
+    "MSAA:",  // MsaaLabel
+    "4x (Original)",  // MsaaOriginal
+    "Multisampling der 3D-Szenen des Spiels. 8x braucht eine stärkere GPU.",  // MsaaTooltip
+    "Transparenz-AA",  // TransparencyAaLabel
+    "Glättet die Kanten von Laub, Zäunen und anderen ausgeschnittenen Texturen (Alpha to Coverage).",  // TransparencyAaTooltip
+    "60 FPS",  // UnlockFpsLabel
+    "Menüs und offene Welt laufen mit 60 statt 30 FPS (Kämpfe laufen bereits mit 60). Braucht eine schnellere CPU.",  // UnlockFpsTooltip
+    "Helligkeit:",  // BrightnessLabel
+    "50 ist die Originalhelligkeit des Spiels.",  // BrightnessTooltip
+    "Bildlatenz:",  // FrameLatencyLabel
+    "1 (minimal)",  // FrameLatencyLowest
+    "Bilder in der Warteschlange vor der Anzeige. 1 hat die geringste Eingabeverzögerung; 2 oder 3 können ungleichmäßige Bildzeiten glätten.",  // FrameLatencyTooltip
+    "Dreifachpufferung",  // TripleBufferingLabel
+    "Drei Anzeigepuffer statt zwei.",  // TripleBufferingTooltip
+    "Synchronisiert die Ausgabe mit dem Bildschirm. Mit dem nativen Renderer hängt die Spielgeschwindigkeit nicht von VSync ab.",  // VsyncNativeTooltip
+    "Grafikkarte:",  // GraphicsDeviceLabel
+    "Automatisch",  // GraphicsDeviceAuto
+    "Die Grafikkarte, auf der das Spiel läuft. Automatisch überlässt die Wahl dem Renderer. Auf Laptops mit zwei Grafikkarten die dedizierte wählen (NVIDIA oder AMD).",  // GraphicsDeviceTooltip
 };
 
 }  // namespace localization_strings

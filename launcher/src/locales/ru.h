@@ -154,6 +154,29 @@ inline constexpr const char* kRu[] = {
     "Другой (%u)",  // GameLanguageCustom
     "Применяется при запуске игры. Доступные тексты и озвучка зависят от файлов игры.",  // GameLanguageHint
     "Язык интерфейса лаунчера",  // LauncherLanguageTooltip
+    "Xenos (эмуляция GPU)",  // RendererXenos
+    "Нативный (Direct3D 12)",  // RendererNative
+    "Xenos эмулирует GPU Xbox 360 и поддерживает всю игру. Нативный рендерер рисует игру напрямую через Direct3D 12: быстрее и с дополнительными настройками, но в некоторых частях игры ещё тестируется.",  // RendererTooltip
+    "Недоступно с нативным рендерером.",  // NativeUnavailableTooltip
+    "1920x1080 - 1,5x (Full HD)",  // Res1_5x
+    "MSAA:",  // MsaaLabel
+    "4x (оригинал)",  // MsaaOriginal
+    "Мультисэмплинг 3D-сцен игры. Для 8x нужна более мощная видеокарта.",  // MsaaTooltip
+    "Сглаживание прозрачности",  // TransparencyAaLabel
+    "Сглаживает края листвы, заборов и других вырезанных текстур (alpha to coverage).",  // TransparencyAaTooltip
+    "60 FPS",  // UnlockFpsLabel
+    "Меню и открытый мир работают на 60 FPS вместо 30 (бои уже идут на 60). Нужен более быстрый процессор.",  // UnlockFpsTooltip
+    "Яркость:",  // BrightnessLabel
+    "50 — исходная яркость игры.",  // BrightnessTooltip
+    "Задержка кадров:",  // FrameLatencyLabel
+    "1 (минимальная)",  // FrameLatencyLowest
+    "Кадры в очереди перед выводом на экран. 1 даёт наименьшую задержку ввода; 2 или 3 могут сгладить неровное время кадра.",  // FrameLatencyTooltip
+    "Тройная буферизация",  // TripleBufferingLabel
+    "Три буфера вывода вместо двух.",  // TripleBufferingTooltip
+    "Синхронизирует вывод с экраном. С нативным рендерером скорость игры не зависит от VSync.",  // VsyncNativeTooltip
+    "Видеокарта:",  // GraphicsDeviceLabel
+    "Автоматически",  // GraphicsDeviceAuto
+    "Видеокарта, на которой работает игра. «Автоматически» оставляет выбор рендереру. На ноутбуках с двумя видеокартами выберите дискретную (NVIDIA или AMD).",  // GraphicsDeviceTooltip
 };
 
 }  // namespace localization_strings
