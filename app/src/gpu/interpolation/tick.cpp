@@ -12,6 +12,7 @@
 #include <rex/hook.h>
 #include <rex/ppc/context.h>
 #include <algorithm>
+#include <atomic>
 #include <cmath>
 #include <cstdlib>
 #include <string_view>
@@ -37,9 +38,12 @@ int enabled = -1;
 bool by_variable = false;  // The mode set by REX_NATIVE_STATE_INTERPOLATION: F8 and the title's label.
 uint32_t rate = 0;
 bool switched_off = false, f8_down = false;
+// The limiter's rate (PaceRate), decided on the main thread and read by the
+// render thread; 0 before the first decision.
+std::atomic<uint32_t> pace_rate{0};
 // Main thread.
 Frame frame;
-bool decided = false, started = false, in_step = false;
+bool decided = false, started = false, in_step = false, in_main_step = false;
 uint32_t frames_since_tick = 0;
 int64_t frequency = 0, last = 0;
 double debt = 0;  // Real time owed to the game, seconds.
@@ -87,10 +91,10 @@ void Record(const char* reason, int64_t now) {
   const double seconds = window_start && frequency ? double(now - window_start) / double(frequency) : 0.0;
   host::Record("native-d3d-tick", fmt::format(
       "\"reason\":\"{}\",\"iteration\":{},\"owning\":{},\"gate\":{},\"tick\":{},\"period\":{:.6f},\"alpha\":{:.4f},"
-      "\"frame_rate\":{},\"ticks\":{},\"skipped\":{},\"capped\":{},\"debt_ms\":{:.3f},\"window_s\":{:.3f},"
-      "\"window_ticks_per_s\":{:.3f},\"window_iterations_per_s\":{:.3f},\"view_time\":{},"
+      "\"frame_rate\":{},\"pace_rate\":{},\"ticks\":{},\"skipped\":{},\"capped\":{},\"debt_ms\":{:.3f},"
+      "\"window_s\":{:.3f},\"window_ticks_per_s\":{:.3f},\"window_iterations_per_s\":{:.3f},\"view_time\":{},"
       "\"window_view_dt_per_s\":{:.4f},\"window_tick_dt_per_s\":{:.4f}",
-      reason, frame.index, Owning(), frame.gate, frame.tick, frame.period, frame.alpha, FrameRate(), frame.ticks,
+      reason, frame.index, Owning(), frame.gate, frame.tick, frame.period, frame.alpha, FrameRate(), PaceRate(), frame.ticks,
       frame.skipped, capped, debt * 1e3, seconds, seconds > 0 ? double(window_ticks) / seconds : 0.0,
       seconds > 0 ? double(window_iterations) / seconds : 0.0, ViewTime(),
       seconds > 0 ? window_view_dt / seconds : 0.0, seconds > 0 ? window_tick_dt / seconds : 0.0));
@@ -120,7 +124,11 @@ void Decide(uint8_t* base) {
   const bool fixed = time && Get32(base, time + 72);
   const float period = time ? GetFloat(base, time + 76) : 0.0f;
   const double frame_period = 1.0 / double(FrameRate());
-  const bool gate = Owning() && fixed && std::isfinite(period) && period > frame_period * 1.25 && period <= 0.25f;
+  const bool valid_period = fixed && std::isfinite(period) && period > 1e-4f && period <= 0.25f;
+  const bool gate = Owning() && valid_period && period > frame_period * 1.25;
+  // Without the gate under the fixed step, every iteration is a tick at the
+  // title's step: the limiter paces at the tick rate (PaceRate).
+  pace_rate.store(valid_period && !gate ? uint32_t(std::lround(1.0 / double(period))) : FrameRate());
   const bool changed = gate != frame.gate || (gate && std::fabs(period - frame.period) > 1e-6f);
   frame.gate = gate;
   frame.period = gate ? period : 0.0f;
@@ -214,9 +222,16 @@ uint32_t FrameRate() {
   return rate;
 }
 
+uint32_t PaceRate() {
+  const uint32_t rate = pace_rate.load();
+  return rate ? rate : FrameRate();
+}
+
 const Frame& Current() { return frame; }
 
 bool InGatedStep() { return in_step; }
+
+bool InMainStep() { return in_main_step; }
 
 void BeginView(uint8_t* base) {
   view_address = 0;
@@ -271,10 +286,12 @@ void WorldChangeStep(PPCContext& ctx, uint8_t* base) {
 }
 
 void MainStep(PPCContext& ctx, uint8_t* base) {
+  in_main_step = true;
   if (!Gating()) {
     if (gpu::Active()) motion::LoopStart(base);
     __imp__sub_82684518(ctx, base);
     if (gpu::Active()) motion::MainStepDone(base);
+    in_main_step = false;
     return;
   }
   Decide(base);
@@ -282,6 +299,7 @@ void MainStep(PPCContext& ctx, uint8_t* base) {
   if (frame.tick) __imp__sub_82684518(ctx, base);
   else ViewBlock(ctx, base);
   in_step = false;
+  in_main_step = false;
   decided = false;
   motion::MainStepDone(base);
 }

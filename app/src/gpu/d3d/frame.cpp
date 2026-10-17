@@ -350,9 +350,10 @@ void PaceSwap(PPCContext& ctx, uint8_t* base, uint32_t dev) {
   // paces the own Swap at that interval instead of the title's +13580, which
   // stays untouched (the title keeps requesting 2 in the menus and the open
   // world, 1 in the fight). The engine's fixed step follows it (TimeStepHook).
-  // The state interpolation mode (tick.h) paces at its frame rate instead.
+  // The state interpolation mode (tick.h) paces at its frame rate instead, or
+  // at the tick rate when its gate is off under the fixed step (PaceRate).
   const uint32_t forced_interval = ForcedSwapInterval();
-  const uint32_t rate = tick::Owning() ? tick::FrameRate() : 0u;
+  const uint32_t rate = tick::Owning() ? tick::PaceRate() : 0u;
   uint32_t interval = forced_interval ? forced_interval : Get32(base, dev + 13580);
   if (!rate && (interval < 1 || interval > 4)) {  // Clamped to the covered range.
     UncoveredOperation(ctx, fmt::format("Swap-presentation-interval-uncovered-{}", interval));

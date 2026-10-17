@@ -133,7 +133,7 @@ bool OptionList::Track(const Option& option, int& value, int min, int max, std::
   const float fraction = stops.empty() ? (max > min ? static_cast<float>(value - min) / (max - min) : 0.0f)
                                        : (last > 0 ? static_cast<float>(index) / last : 0.0f);
   const float x = item_min.x + kGrabPadding + grab / 2 + fraction * (slider_width - grab);
-  const int shown = stops.empty() ? value : stops[index];
+  const int shown = value;  // The configured value, also when it lies between the stops.
   const float y = (item_min.y + item_max.y) / 2;
   auto* draw = ImGui::GetWindowDrawList();
   draw->AddRectFilled(ImVec2(item_min.x, y - 3), ImVec2(item_max.x, y + 3), ImGui::GetColorU32(ImGuiCol_FrameBg), 3);

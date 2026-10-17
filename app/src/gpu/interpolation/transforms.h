@@ -35,24 +35,29 @@
 // copy (82580968), the matrices it reads go at the tick's alpha, tracked by
 // address with the same cuts as the objects, and come back right after it.
 //
-// On with the gate of REX_NATIVE_STATE_INTERPOLATION=1;
-// REX_NATIVE_INTERPOLATION_TRANSFORMS=0 leaves the frames between the ticks
+// On with the gate of tick.h (frame_rate above 30, or
+// REX_NATIVE_STATE_INTERPOLATION=1); REX_NATIVE_INTERPOLATION_TRANSFORMS=0
+// leaves the frames between the ticks
 // as the last tick (the gate alone); REX_NATIVE_INTERPOLATION_BONES=0 leaves
 // the poses at the last tick. Main thread.
 #include <cstdint>
 
 namespace gpu::interpolation {
 bool Enabled();
-// The last view block: the matrices written (objects), the camera written,
-// and the cuts of the last tick; the poses copied on the main thread, the
-// bone matrices written, cut at the tick and lost (written outside the
-// logic), and the copies of another thread (not interpolated).
+// The last view block: the matrices written (objects), a camera entry written
+// and a camera cut at the tick, and the object cuts of the last tick; the
+// poses copied on the main thread, the bone matrices written, cut at the tick
+// and lost (written outside the logic), and the copies of another thread (not
+// interpolated).
 struct Applied {
   uint32_t objects = 0, object_cuts = 0;
   bool camera = false, camera_cut = false;
   uint32_t poses = 0, bones = 0, bone_cuts = 0, bones_lost = 0, pose_other_thread = 0;
 };
 const Applied& LastApplied();
+// Mounts (825E2A08) seen from another thread than the view block's while
+// collecting, since the start: not tracked.
+uint32_t MountsOtherThread();
 // The object of the pose copy running on this thread (82580968), or 0.
 uint32_t PoseObject();
 // A pointer the engine frees (820C0018, crash_dump.cpp), any thread: a freed

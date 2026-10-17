@@ -21,8 +21,9 @@
 // The option frame_rate above 30 (settings.h, the launcher's frame rate)
 // turns the mode on at that rate; for the boots, REX_NATIVE_STATE_INTERPOLATION
 // (1 on, 0 off) wins over it, with REX_NATIVE_FRAME_RATE for the rate (60
-// when neither gives one). The own limiter then paces at the rate and the
-// time step stays the title's (no rewrite of +76). With the mode set by the
+// when neither gives one). The own limiter then paces at the rate (PaceRate:
+// the tick rate when the gate is off under the fixed step) and the time step
+// stays the title's (no rewrite of +76). With the mode set by the
 // variable, F8 switches the gate off and on at run time (off, the frame is the
 // 1/60 s simulation of unlock_fps: every iteration a tick, +76 rewritten) and
 // the window title shows it. Changes and every 300th iteration are recorded
@@ -51,6 +52,12 @@ bool Enabled();
 bool Owning();
 // REX_NATIVE_FRAME_RATE, else frame_rate above 30 (30 to 240), else 60.
 uint32_t FrameRate();
+// The rate the limiter paces at while Owning(), any thread: FrameRate() when
+// the gate decides or the engine measures its dt; the tick rate (1 / +76)
+// when the fixed step is on and the gate is off, since every iteration is
+// then a tick at the title's step, and a frame rate below the tick's or within
+// a quarter of it would slow the game down or speed it up (a fight at 72).
+uint32_t PaceRate();
 // The current loop iteration.
 struct Frame {
   uint64_t index = 0;     // Loop iterations of the native mode.
@@ -64,6 +71,9 @@ struct Frame {
 const Frame& Current();
 // Inside the main step of an iteration the gate decides.
 bool InGatedStep();
+// Inside the main step (82684518) of the main loop, main thread: the view
+// block's hooks act only there (82684050 and 8259FF40 have other callers).
+bool InMainStep();
 // The label of the window title; empty when the mode is off or set by the option.
 const char* Label();
 // The view block's start (82684050) and the delivery's end (8259FF40), main

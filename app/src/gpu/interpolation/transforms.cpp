@@ -12,6 +12,7 @@
 #include <mutex>
 #include <cmath>
 #include <cstdlib>
+#include <cstring>
 #include <string_view>
 #include <unordered_map>
 #include <unordered_set>
@@ -60,7 +61,7 @@ struct BoneTrack {
 // A place written over the live transform, put back after the delivery.
 struct Written {
   uint32_t address = 0, count = 0;
-  std::array<float, kCameraFloats> value{}, live{};
+  Matrix value{}, live{};
 };
 
 int enabled = -1, bones_enabled = -1;
@@ -71,12 +72,12 @@ uint32_t main_thread = 0;  // The guest thread of the view block.
 thread_local uint32_t pose_object = 0;  // The object of the running pose copy.
 std::vector<uint32_t> mounted, candidates;   // Objects of the current and the last display.
 bool collecting = false;
-CameraTrack camera;
-std::vector<Written> written;
-Camera camera_written{};
-bool camera_pending = false, camera_entry_done = false;
-uint32_t camera_written_entry = 0;
+std::unordered_map<uint32_t, CameraTrack> cameras;  // By the view's entry.
+std::unordered_set<uint32_t> camera_entries_done;   // The entries handled in this display.
+std::vector<Written> written;         // The object matrices written in this view block.
+std::vector<Written> camera_written;  // The camera entries written in this view block.
 Applied applied;
+std::atomic<uint32_t> mounts_other_thread{0};
 // The pointers the engine freed (820C0018, any thread) since the last view
 // block: an object freed by the tick (the deferred destruction at the end of
 // the iteration, 82659060) leaves the candidates and the tracks before
@@ -87,8 +88,23 @@ std::vector<uint32_t> freed;
 bool freed_overflow = false;
 constexpr size_t kFreedMax = 1 << 20;
 
-void ReadFloats(uint8_t* base, uint32_t address, float* out, size_t count) {
-  for (size_t i = 0; i < count; ++i) out[i] = GetFloat(base, address + uint32_t(4 * i));
+// Guarded reads of guest memory: a pointer taken from an object the display
+// mounted a tick ago, or from a bone array, may no longer point at mapped
+// memory; CopyFromGuest fails instead of faulting.
+bool Read32(uint8_t* base, uint32_t address, uint32_t& out) {
+  if (!CopyFromGuest(&out, base + address, 4)) return false;
+  out = _byteswap_ulong(out);
+  return true;
+}
+bool ReadFloats(uint8_t* base, uint32_t address, float* out, size_t count) {
+  if (!CopyFromGuest(out, base + address, 4 * count)) return false;
+  for (size_t i = 0; i < count; ++i) {
+    uint32_t v;
+    std::memcpy(&v, out + i, 4);
+    v = _byteswap_ulong(v);
+    std::memcpy(out + i, &v, 4);
+  }
+  return true;
 }
 bool Finite(const float* v, size_t count) {
   return std::all_of(v, v + count, [](float f) { return std::isfinite(f); });
@@ -123,7 +139,7 @@ bool MatrixCut(const Matrix& a, const Matrix& b) {
     if (Cosine3(a.data() + 4 * row, b.data() + 4 * row) < kCutCosine) return true;
   return false;
 }
-void ReadCamera(uint8_t* base, uint32_t entry, Camera& out) { ReadFloats(base, entry, out.data(), kCameraFloats); }
+bool ReadCamera(uint8_t* base, uint32_t entry, Camera& out) { return ReadFloats(base, entry, out.data(), kCameraFloats); }
 void WriteCamera(uint8_t* base, uint32_t entry, const Camera& c) {
   for (uint32_t i = 0; i < kCameraFloats; ++i) PutFloat(base, entry + 4 * i, c[i]);
 }
@@ -140,7 +156,9 @@ void TickCamera(CameraTrack& track, uint32_t entry, const Camera& live, uint64_t
   track.previous = continuing ? track.current : live;
   track.current = live;
   track.cut = continuing && CameraCut(track.previous, track.current);
-  track.valid = continuing && !track.cut && Finite(live.data(), kCameraFloats);
+  // Both ends finite: a NaN previous passes the cuts (their comparisons are false).
+  track.valid = continuing && !track.cut && Finite(track.previous.data(), kCameraFloats) &&
+                Finite(live.data(), kCameraFloats);
   track.entry = entry;
   track.tick = tick;
 }
@@ -149,15 +167,17 @@ bool ApplyCamera(uint8_t* base, CameraTrack& track, uint32_t entry, uint64_t tic
   if (!track.valid || track.entry != entry || track.tick != tick || Get32(base, kCutCounter)) return false;
   if (track.previous == track.current) return false;
   Camera live;
-  ReadCamera(base, entry, live);
-  if (live != track.current) {  // Something else wrote it since the tick.
+  if (!ReadCamera(base, entry, live) || live != track.current) {  // Something else wrote it since the tick.
     track.valid = false;
     return false;
   }
-  BlendMatrix(track.previous.data(), track.current.data(), alpha, camera_written.data());
-  WriteCamera(base, entry, camera_written);
-  camera_pending = true;
-  camera_written_entry = entry;
+  Written w;
+  w.address = entry;
+  w.count = kCameraFloats;
+  BlendMatrix(track.previous.data(), track.current.data(), alpha, w.value.data());
+  w.live = track.current;
+  WriteCamera(base, entry, w.value);
+  camera_written.push_back(w);
   return true;
 }
 
@@ -231,7 +251,8 @@ void Pose(uint8_t* base, uint32_t object, uint32_t geometry, std::vector<Written
     return;
   }
   ++applied.poses;
-  std::vector<std::pair<uint32_t, uint32_t>> bones;
+  static std::vector<std::pair<uint32_t, uint32_t>> bones;  // Main thread (above): a scratch kept across the calls.
+  bones.clear();
   BoneMatrices(base, object, geometry, bones);
   const auto& f = tick::Current();
   for (const auto& [m, bone] : bones) {
@@ -239,7 +260,7 @@ void Pose(uint8_t* base, uint32_t object, uint32_t geometry, std::vector<Written
         std::any_of(out.begin(), out.end(), [&](const Written& w) { return w.address == m; }))
       continue;
     Matrix live;
-    ReadFloats(base, m, live.data(), 16);
+    if (!ReadFloats(base, m, live.data(), 16)) continue;
     BoneTrack& t = bone_tracks[m];
     if (f.tick && t.tick != f.ticks) {
       const bool continuing = t.tick + 1 == f.ticks && t.owner == object && t.bone == bone;
@@ -247,7 +268,7 @@ void Pose(uint8_t* base, uint32_t object, uint32_t geometry, std::vector<Written
       t.current = live;
       const bool cut = continuing && MatrixCut(t.previous, t.current);
       if (cut) ++applied.bone_cuts;
-      t.valid = continuing && !cut && Finite(live.data(), 16);
+      t.valid = continuing && !cut && Finite(t.previous.data(), 16) && Finite(live.data(), 16);
       t.owner = object;
       t.bone = bone;
       t.tick = f.ticks;
@@ -276,10 +297,11 @@ void ViewStart(uint8_t* base) {
   collecting = Active();
   applied = {};
   object_written.clear();
+  camera_entries_done.clear();
   if (!collecting) {
     tracks.clear();
     bone_tracks.clear();
-    camera = {};
+    cameras.clear();
     watching = false;
     std::lock_guard lock(freed_mutex);
     freed.clear();
@@ -300,7 +322,7 @@ void ViewStart(uint8_t* base) {
       tracks.clear();
       bone_tracks.clear();
       candidates.clear();
-    } else if (!gone.empty()) {
+    } else if (!gone.empty() && !(tracks.empty() && bone_tracks.empty() && candidates.empty())) {
       const std::unordered_set<uint32_t> set(gone.begin(), gone.end());
       for (auto it = tracks.begin(); it != tracks.end();)
         it = set.count(it->first) || set.count(it->second.matrix) ? tracks.erase(it) : std::next(it);
@@ -316,31 +338,33 @@ void ViewStart(uint8_t* base) {
     std::unordered_set<uint32_t> seen;
     for (const uint32_t object : candidates) {
       if (!seen.insert(object).second) continue;
-      const uint32_t m = Get32(base, object + 20);
-      if (!m) continue;
+      // An object freed since the display by another path than 820C0018 may
+      // hold anything at +20: the reads are guarded, and the track stays at
+      // its tick (no write, gone after two ticks).
+      uint32_t m = 0;
       Matrix live;
-      ReadFloats(base, m, live.data(), 16);
+      if (!Read32(base, object + 20, m) || !m || !ReadFloats(base, m, live.data(), 16)) continue;
       Track& t = tracks[object];
       const bool continuing = t.matrix == m && t.tick + 1 == tick;
       t.previous = continuing ? t.current : live;
       t.current = live;
       const bool cut = continuing && MatrixCut(t.previous, t.current);
       if (cut) ++applied.object_cuts;
-      t.valid = continuing && !cut && Finite(live.data(), 16);
+      t.valid = continuing && !cut && Finite(t.previous.data(), 16) && Finite(live.data(), 16);
       t.matrix = m;
       t.tick = tick;
     }
     for (auto it = tracks.begin(); it != tracks.end();) it = it->second.tick + 2 < tick ? tracks.erase(it) : std::next(it);
     for (auto it = bone_tracks.begin(); it != bone_tracks.end();)
       it = it->second.tick + 2 < tick ? bone_tracks.erase(it) : std::next(it);
+    for (auto it = cameras.begin(); it != cameras.end();) it = it->second.tick + 2 < tick ? cameras.erase(it) : std::next(it);
   }
   const float alpha = f.alpha;
   std::unordered_set<uint32_t> matrices;
   for (auto& [object, t] : tracks) {
     if (!t.valid || t.tick != tick || t.previous == t.current || !matrices.insert(t.matrix).second) continue;
     Matrix live;
-    ReadFloats(base, t.matrix, live.data(), 16);
-    if (live != t.current) {  // Written outside the logic since the tick.
+    if (!ReadFloats(base, t.matrix, live.data(), 16) || live != t.current) {  // Written outside the logic since the tick.
       t.valid = false;
       continue;
     }
@@ -354,35 +378,33 @@ void ViewStart(uint8_t* base) {
     object_written.insert(w.address);
     ++applied.objects;
   }
-  camera_entry_done = false;
 }
 
 // The display's camera (82659B88, r3 the view's entry), before it builds the
-// view's camera from the entry: once per display (the display calls it again
-// at its end, over the same entry).
+// view's camera from the entry: once per display and entry (the display calls
+// it again at its end, over the same entry), with a track per entry.
 void CameraEntry(uint8_t* base, uint32_t entry) {
-  if (!collecting || !entry || camera_entry_done) return;
-  camera_entry_done = true;
+  if (!collecting || !entry || !camera_entries_done.insert(entry).second) return;
   const auto& f = tick::Current();
+  CameraTrack& camera = cameras[entry];
   if (f.tick) {
     Camera live;
-    ReadCamera(base, entry, live);
+    if (!ReadCamera(base, entry, live)) {
+      cameras.erase(entry);
+      return;
+    }
     TickCamera(camera, entry, live, f.ticks);
-    applied.camera_cut = camera.cut;
+    applied.camera_cut = applied.camera_cut || camera.cut;
   }
-  applied.camera = ApplyCamera(base, camera, entry, f.ticks, f.alpha);
+  applied.camera = ApplyCamera(base, camera, entry, f.ticks, f.alpha) || applied.camera;
 }
 
 // After the delivery: the live transforms come back where nothing else wrote.
 void Restore(uint8_t* base) {
   PutBack(base, written);
   written.clear();
-  if (camera_pending) {
-    Camera live;
-    ReadCamera(base, camera_written_entry, live);
-    if (live == camera_written) WriteCamera(base, camera_written_entry, camera.current);
-    camera_pending = false;
-  }
+  PutBack(base, camera_written);
+  camera_written.clear();
   collecting = false;
 }
 }  // namespace
@@ -399,6 +421,8 @@ const Applied& LastApplied() { return applied; }
 
 uint32_t PoseObject() { return pose_object; }
 
+uint32_t MountsOtherThread() { return mounts_other_thread.load(); }
+
 void NoteFree(uint32_t pointer) {
   if (!watching.load(std::memory_order_relaxed)) return;
   std::lock_guard lock(freed_mutex);
@@ -407,30 +431,42 @@ void NoteFree(uint32_t pointer) {
 }
 }  // namespace gpu::interpolation
 
-using namespace gpu;
+// The view block's start and the delivery, only from the main step: 82684050
+// is also called by 8267F078 and 82684470, and 8259FF40 by 82684470 and
+// 82685AB8; a call from there would clear the tracks.
 REX_HOOK_RAW(sub_82684050) {
-  motion::ViewStart(base, ctx.r3.u32);  // The view probe, before the writes.
-  tick::BeginView(base);
+  if (!gpu::tick::InMainStep()) {
+    __imp__sub_82684050(ctx, base);
+    return;
+  }
+  gpu::motion::ViewStart(base, ctx.r3.u32);  // The view probe, before the writes.
+  gpu::tick::BeginView(base);
   gpu::interpolation::ViewStart(base);
   __imp__sub_82684050(ctx, base);
 }
 REX_HOOK_RAW(sub_8259FF40) {
   __imp__sub_8259FF40(ctx, base);
-  tick::EndView(base);
+  if (!gpu::tick::InMainStep()) return;
+  gpu::tick::EndView(base);
   gpu::interpolation::Restore(base);
-  motion::Delivered(base);
+  gpu::motion::Delivered(base);
 }
+// The mount of the display's lists: the objects go to the tracks only from
+// the view block's thread (825E0758 and 825E1918 also call it, with no
+// static caller); a mount from another thread is counted, not tracked.
 REX_HOOK_RAW(sub_825E2A08) {
   using namespace gpu::interpolation;
-  if (collecting || motion::Enabled()) {
-    const uint32_t holder = ctx.r3.u32, count = Get32(base, holder + 8), array = Get32(base, holder + 4);
+  const bool tracking = collecting && gpu::GuestThread() == main_thread;
+  if (collecting && !tracking) ++mounts_other_thread;
+  if (tracking || gpu::motion::Enabled()) {
+    const uint32_t holder = ctx.r3.u32, count = gpu::Get32(base, holder + 8), array = gpu::Get32(base, holder + 4);
     for (uint32_t i = 0; array && i < count && i < 65536; ++i) {
-      const uint32_t object = Get32(base, array + 4 * i);
+      const uint32_t object = gpu::Get32(base, array + 4 * i);
       if (!object) continue;
-      const uint32_t flags = Get32(base, object + 4);
+      const uint32_t flags = gpu::Get32(base, object + 4);
       if (!(flags & 0x00040000) || (flags & 0x00200004)) continue;
-      if (collecting) mounted.push_back(object);
-      motion::NoteMounted(object);
+      if (tracking) mounted.push_back(object);
+      gpu::motion::NoteMounted(object);
     }
   }
   __imp__sub_825E2A08(ctx, base);
