@@ -87,11 +87,21 @@ add_custom_target(narutorise_runtime_config ALL
             $<TARGET_FILE_DIR:narutorise>/narutorise.toml)
 add_dependencies(narutorise narutorise_runtime_config)
 
-# Bundled shader cache: seeded from packaging/ into the build output on first run.
-add_custom_target(narutorise_shader_cache ALL
-    COMMAND ${CMAKE_COMMAND} -E copy_directory_if_different
-            ${CMAKE_CURRENT_SOURCE_DIR}/../packaging/shader_cache
-            $<TARGET_FILE_DIR:narutorise>/shader_cache)
+# Bundled Xenos shader storage (555307E5.xsh/.xpso), seeded into the user cache
+# on first run. It holds the game's shader microcode, so it stays out of the
+# repository: a local folder provides it (packaging/private/shader_cache by
+# default). Without it the game still runs; Xenos translates shaders on demand.
+set(NARUTORISE_SHADER_STORAGE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../packaging/private/shader_cache"
+    CACHE PATH "Folder with the Xenos shader storage files (555307E5.*) to bundle")
+if(EXISTS "${NARUTORISE_SHADER_STORAGE_DIR}")
+    add_custom_target(narutorise_shader_cache ALL
+        COMMAND ${CMAKE_COMMAND} -E copy_directory_if_different
+                "${NARUTORISE_SHADER_STORAGE_DIR}"
+                $<TARGET_FILE_DIR:narutorise>/shader_cache)
+else()
+    message(STATUS "No Xenos shader storage in ${NARUTORISE_SHADER_STORAGE_DIR}; none is bundled")
+    add_custom_target(narutorise_shader_cache)
+endif()
 add_dependencies(narutorise narutorise_shader_cache)
 
 # AMD FidelityFX runtime DLL (when the SDK was built with FidelityFX enabled).

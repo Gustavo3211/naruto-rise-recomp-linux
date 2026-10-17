@@ -12,6 +12,7 @@ See also: [Build and run](../docs/build-and-run.md), [DLCs](../docs/dlc.md), and
 - **`version.iss`**: Default release version; override using `-Version` without modifying source.
 - **`third-party-licenses.psd1`**: Third-party components the release ships, with their licenses. `package-release.ps1` copies each license text and the project `LICENSE` into the package's `licenses/` folder and writes its `README.txt` index, including the source revisions of the LGPL libraries in `rexruntime.dll`. Update it when a shipped dependency changes.
 - **`licenses/`**: Verbatim copies of license texts that exist only inside a source header or the upstream repository.
+- **`private/`**: Local files derived from the game that packaging needs but Git ignores. `private/shader_cache/` holds the Xenos shader storage (`555307E5.xsh`, `555307E5.rtv.d3d12.xpso`), copied from `Documents/narutorise/cache/shaders/shareable/` after playing with the Xenos renderer.
 - **`tests/`**: Synthetic ISO helper tests and isolated Inno install/uninstall tests.
 
 ---
