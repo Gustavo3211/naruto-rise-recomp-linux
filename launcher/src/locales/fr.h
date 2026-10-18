@@ -174,6 +174,37 @@ inline constexpr const char* kFr[] = {
     "Passe les logos affichés au démarrage du jeu. La cinématique d'ouverture est conservée.",  // SkipIntroDescription
     "Lit les manettes via SDL, qui reconnaît les manettes Xbox, PlayStation et d'autres. Désactivé, le jeu utilise XInput, qui ne reconnaît que les manettes compatibles Xbox.",  // SdlInputDescription
     "La manette connectée en ce moment, avec le nom que lui donne SDL.",  // ControllerDescription
+    "Utiliser le clavier et la souris",  // KeyboardMouseLabel
+    "Le clavier et la souris remplacent une manette Xbox et fonctionnent avec une manette connectée. Avec la souris sur la caméra, le curseur reste dans la fenêtre du jeu tant qu'elle est active ; Alt+Tab le libère. Le jeu affiche toujours les boutons de la manette.",  // KeyboardMouseDescription
+    "La souris déplace la caméra",  // MouseCameraLabel
+    "Déplace la caméra (le stick droit) avec la souris. Désactivé, la caméra ne bouge qu'avec les touches du stick droit.",  // MouseCameraDescription
+    "Sensibilité",  // MouseSensitivityLabel
+    "La vitesse à laquelle la caméra suit la souris. 100 % est la valeur par défaut.",  // MouseSensitivityDescription
+    "Touches",  // KeysLabel
+    "Les touches et boutons de la souris de chaque commande de la manette, deux par commande.",  // KeysDescription
+    "Configurer les touches…",  // MapKeysButton
+    "Configurer les touches",  // MapKeysTitle
+    "Commandes › Clavier et souris",  // MapKeysPath
+    "Boutons",  // KeysButtonsHeading
+    "Stick gauche",  // LeftStickName
+    "Stick droit",  // RightStickName
+    "Croix directionnelle",  // DpadName
+    "+ souris",  // KeysPlusMouse
+    "Haut",  // DirectionUp
+    "Bas",  // DirectionDown
+    "Gauche",  // DirectionLeft
+    "Droite",  // DirectionRight
+    "Cliquez puis appuyez sur la nouvelle touche (5 s). Clic droit pour effacer. Une touche déjà utilisée quitte sa commande précédente.",  // KeysHint
+    "Appuyez… %d",  // KeyCapturePrompt
+    "Rétablir les touches par défaut",  // KeysRestoreDefaults
+    "Terminé",  // KeysDone
+    "%s a été retirée de %s.",  // KeyMovedStatus
+    "%s est utilisée par le jeu et ne peut pas être attribuée.",  // KeyReservedStatus
+    "Touches par défaut rétablies.",  // KeysRestoredStatus
+    "Espace",  // KeySpaceName
+    "Clic gauche",  // MouseLeftName
+    "Clic droit",  // MouseRightName
+    "Clic milieu",  // MouseMiddleName
 };
 
 }  // namespace localization_strings

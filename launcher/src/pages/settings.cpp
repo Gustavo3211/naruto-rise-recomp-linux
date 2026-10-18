@@ -9,6 +9,7 @@
 
 #include "graphics_devices.h"
 #include "localization.h"
+#include "pages/key_mapping.h"
 #include "pages/pages.h"
 #include "pages/settings_form.h"
 #include "widgets.h"
@@ -43,11 +44,19 @@ constexpr Option kDither{TextId::DitherLabel, TextId::DitherDescription, Rendere
 
 constexpr Option kSdlInput{TextId::SdlInputLabel, TextId::SdlInputDescription};
 constexpr Option kController{TextId::ControllerLabel, TextId::ControllerDescription};
+constexpr Option kKeyboardMouse{TextId::KeyboardMouseLabel, TextId::KeyboardMouseDescription};
+constexpr Option kMouseCamera{TextId::MouseCameraLabel, TextId::MouseCameraDescription};
+constexpr Option kMouseSensitivity{TextId::MouseSensitivityLabel, TextId::MouseSensitivityDescription};
+constexpr Option kKeys{TextId::KeysLabel, TextId::KeysDescription};
 
 constexpr Option kFrameLatency{TextId::FrameLatencyLabel, TextId::FrameLatencyDescription, Renderer::kNative};
 constexpr Option kTripleBuffering{TextId::TripleBufferingLabel, TextId::TripleBufferingDescription,
                                   Renderer::kNative};
 constexpr Option kFpsOverlay{TextId::FpsOverlayLabel, TextId::FpsOverlayDescription, Renderer::kXenos};
+
+// The key mapping view, opened from the Controls group, takes the place of
+// the groups, the options and the description.
+bool g_mapping = false;
 
 // --- Groups --------------------------------------------------------------
 
@@ -191,6 +200,15 @@ void RenderControlsGroup(OptionList& list, GameConfig& config) {
   bool sdl = config.input_backend != "xinput";
   if (list.Checkbox(kSdlInput, sdl)) config.input_backend = sdl ? "sdl" : "xinput";
   list.Text(kController, ControllerName().c_str());
+  list.Checkbox(kKeyboardMouse, config.mnk_mode);
+  // The mouse and the keys count only in keyboard and mouse mode.
+  ImGui::BeginDisabled(!config.mnk_mode);
+  list.Checkbox(kMouseCamera, config.mnk_mouse);
+  // 10% to 300%; a value set by hand outside them stays until the slider moves.
+  int sensitivity = std::clamp(static_cast<int>(std::lround(config.mnk_sensitivity * 100)), 10, 300);
+  if (list.Slider(kMouseSensitivity, sensitivity, 10, 300, "%d%%")) config.mnk_sensitivity = sensitivity / 100.0;
+  if (list.Button(kKeys, Tr(TextId::MapKeysButton))) g_mapping = true;
+  ImGui::EndDisabled();
 }
 
 void RenderAdvancedGroup(OptionList& list, GameConfig& config) {
@@ -310,9 +328,25 @@ void RenderActions(PageContext& context) {
   }
 }
 
+void RenderKeyMappingActions(PageContext& context) {
+  Muted(Tr(TextId::SettingsAppliedNotice));
+  const float width = (ImGui::GetContentRegionAvail().x - ImGui::GetStyle().ItemSpacing.x) / 2;
+  if (ImGui::Button(Tr(TextId::KeysRestoreDefaults), ImVec2(width, kActionButtonHeight))) {
+    RestoreDefaultKeys(context);
+  }
+  ImGui::SameLine();
+  if (PrimaryButton(Tr(TextId::KeysDone), ImVec2(width, kActionButtonHeight))) g_mapping = false;
+}
+
 }  // namespace
 
 void RenderSettingsPage(PageContext& context) {
+  if (g_mapping) {
+    const float spacing = ImGui::GetStyle().ItemSpacing.y;
+    RenderKeyMapping(context, std::max(160.0f, ImGui::GetContentRegionAvail().y - ActionsHeight() - spacing));
+    RenderKeyMappingActions(context);
+    return;
+  }
   // The group list and the options on top, the description of the pointed
   // option below them, then the actions; the options take the height left.
   constexpr float kDescriptionHeight = 124;

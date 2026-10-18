@@ -174,6 +174,37 @@ inline constexpr const char* kIt[] = {
     "Salta i loghi mostrati all'avvio del gioco. Il filmato d'apertura resta.",  // SkipIntroDescription
     "Legge i controller tramite SDL, che riconosce controller Xbox, PlayStation e altri. Disattivato, il gioco usa XInput, che riconosce solo controller compatibili con Xbox.",  // SdlInputDescription
     "Il controller collegato ora, con il nome che gli dà SDL.",  // ControllerDescription
+    "Usa tastiera e mouse",  // KeyboardMouseLabel
+    "Tastiera e mouse sostituiscono un controller Xbox e funzionano insieme a un controller collegato. Con il mouse sulla telecamera, il cursore resta nella finestra del gioco finché è attiva; Alt+Tab lo libera. Il gioco continua a mostrare i pulsanti del controller.",  // KeyboardMouseDescription
+    "Il mouse muove la telecamera",  // MouseCameraLabel
+    "Muove la telecamera (la levetta destra) con il mouse. Disattivato, la telecamera si muove solo con i tasti della levetta destra.",  // MouseCameraDescription
+    "Sensibilità",  // MouseSensitivityLabel
+    "La velocità con cui la telecamera segue il mouse. 100% è il valore predefinito.",  // MouseSensitivityDescription
+    "Tasti",  // KeysLabel
+    "I tasti e i pulsanti del mouse per ogni comando del controller, due per comando.",  // KeysDescription
+    "Assegna tasti…",  // MapKeysButton
+    "Assegna tasti",  // MapKeysTitle
+    "Controlli › Tastiera e mouse",  // MapKeysPath
+    "Pulsanti",  // KeysButtonsHeading
+    "Levetta sinistra",  // LeftStickName
+    "Levetta destra",  // RightStickName
+    "Croce direzionale",  // DpadName
+    "+ mouse",  // KeysPlusMouse
+    "Su",  // DirectionUp
+    "Giù",  // DirectionDown
+    "Sinistra",  // DirectionLeft
+    "Destra",  // DirectionRight
+    "Fai clic e premi il nuovo tasto (5 s). Il clic destro cancella. Un tasto già usato lascia il comando precedente.",  // KeysHint
+    "Premi… %d",  // KeyCapturePrompt
+    "Ripristina tasti predefiniti",  // KeysRestoreDefaults
+    "Fatto",  // KeysDone
+    "%s è stato tolto da %s.",  // KeyMovedStatus
+    "%s è usato dal gioco e non può essere assegnato.",  // KeyReservedStatus
+    "Tasti predefiniti ripristinati.",  // KeysRestoredStatus
+    "Spazio",  // KeySpaceName
+    "Mouse sx",  // MouseLeftName
+    "Mouse dx",  // MouseRightName
+    "Mouse centrale",  // MouseMiddleName
 };
 
 }  // namespace localization_strings

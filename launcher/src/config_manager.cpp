@@ -21,6 +21,12 @@ bool ConfigManager::Load(const std::filesystem::path& toml_path, GameConfig& con
     if (auto v = tbl["protect_zero"].value<bool>()) config.protect_zero = *v;
     if (auto v = tbl["input_backend"].value<std::string>()) config.input_backend = *v;
     if (auto v = tbl["mnk_mode"].value<bool>()) config.mnk_mode = *v;
+    if (auto v = tbl["mnk_mouse"].value<bool>()) config.mnk_mouse = *v;
+    if (auto v = tbl["mnk_sensitivity"].value<double>()) config.mnk_sensitivity = *v;
+    // A configuration from before the key options keeps the default layout.
+    for (std::size_t i = 0; i < kKeyActionCount; ++i) {
+      if (auto v = tbl[KeyActionOption(i)].value<std::string>()) config.key_binds[i] = *v;
+    }
     if (auto v = tbl["fullscreen"].value<bool>()) config.fullscreen = *v;
     if (auto v = tbl["vsync"].value<bool>()) config.vsync = *v;
     if (auto v = tbl["d3d12_host_vsync"].value<bool>()) config.d3d12_host_vsync = *v;
@@ -92,6 +98,11 @@ bool ConfigManager::Save(const std::filesystem::path& toml_path, const GameConfi
   tbl.insert_or_assign("protect_zero", config.protect_zero);
   tbl.insert_or_assign("input_backend", config.input_backend);
   tbl.insert_or_assign("mnk_mode", config.mnk_mode);
+  tbl.insert_or_assign("mnk_mouse", config.mnk_mouse);
+  tbl.insert_or_assign("mnk_sensitivity", config.mnk_sensitivity);
+  for (std::size_t i = 0; i < kKeyActionCount; ++i) {
+    tbl.insert_or_assign(KeyActionOption(i), config.key_binds[i]);
+  }
   tbl.insert_or_assign("fullscreen", config.fullscreen);
   tbl.insert_or_assign("vsync", config.vsync);
   tbl.insert_or_assign("d3d12_host_vsync", config.d3d12_host_vsync);

@@ -174,6 +174,37 @@ inline constexpr const char* kRu[] = {
     "Пропускает логотипы при запуске игры. Вступительный ролик сохраняется.",  // SkipIntroDescription
     "Читает геймпады через SDL, который распознаёт геймпады Xbox, PlayStation и другие. Если выключено, игра использует XInput, который распознаёт только Xbox-совместимые геймпады.",  // SdlInputDescription
     "Подключённый сейчас геймпад, под именем, которое ему даёт SDL.",  // ControllerDescription
+    "Клавиатура и мышь",  // KeyboardMouseLabel
+    "Клавиатура и мышь заменяют геймпад Xbox и работают вместе с подключённым геймпадом. Если мышь управляет камерой, курсор остаётся в окне игры, пока оно активно; Alt+Tab освобождает его. Игра по-прежнему показывает кнопки геймпада.",  // KeyboardMouseDescription
+    "Мышь управляет камерой",  // MouseCameraLabel
+    "Камера (правый стик) двигается мышью. Если выключено, камера двигается только клавишами правого стика.",  // MouseCameraDescription
+    "Чувствительность",  // MouseSensitivityLabel
+    "Как быстро камера следует за мышью. 100% — значение по умолчанию.",  // MouseSensitivityDescription
+    "Клавиши",  // KeysLabel
+    "Клавиши и кнопки мыши для каждой кнопки геймпада, по две на кнопку.",  // KeysDescription
+    "Назначить клавиши…",  // MapKeysButton
+    "Назначение клавиш",  // MapKeysTitle
+    "Управление › Клавиатура и мышь",  // MapKeysPath
+    "Кнопки",  // KeysButtonsHeading
+    "Левый стик",  // LeftStickName
+    "Правый стик",  // RightStickName
+    "Крестовина",  // DpadName
+    "+ мышь",  // KeysPlusMouse
+    "Вверх",  // DirectionUp
+    "Вниз",  // DirectionDown
+    "Влево",  // DirectionLeft
+    "Вправо",  // DirectionRight
+    "Нажмите на поле, затем новую клавишу (5 с). Правый щелчок очищает. Занятая клавиша снимается с прежней кнопки.",  // KeysHint
+    "Нажмите… %d",  // KeyCapturePrompt
+    "Вернуть клавиши по умолчанию",  // KeysRestoreDefaults
+    "Готово",  // KeysDone
+    "%s снята с кнопки %s.",  // KeyMovedStatus
+    "%s используется игрой и не может быть назначена.",  // KeyReservedStatus
+    "Клавиши по умолчанию восстановлены.",  // KeysRestoredStatus
+    "Пробел",  // KeySpaceName
+    "ЛКМ",  // MouseLeftName
+    "ПКМ",  // MouseRightName
+    "СКМ",  // MouseMiddleName
 };
 
 }  // namespace localization_strings
