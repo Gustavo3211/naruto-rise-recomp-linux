@@ -4,7 +4,19 @@
 
 ## Where to configure settings
 
-Use the launcher whenever possible. It reads and saves `narutorise.toml` **next to the executables**. Close both the game and launcher before editing the file manually.
+Use the launcher whenever possible. It reads and saves `narutorise.toml` **next to the executables** when you play or close it. Close both the game and launcher before editing the file manually.
+
+The launcher's **Settings** tab lists its groups on the left; the panel below the options describes the option under the mouse:
+
+| Group | Options |
+| --- | --- |
+| Game | Game language, skip intro videos |
+| Display | Renderer, graphics card, resolution, aspect ratio, brightness, frame rate, VSync, fullscreen |
+| Quality | MSAA, FXAA, post-processing (CAS/FSR), texture filtering, transparency AA, dithering |
+| Controls | SDL controllers, the connected controller, keyboard and mouse, mouse camera and sensitivity, key mapping |
+| Advanced | Frame latency, triple buffering, FPS overlay |
+
+**Reset to Recommended** restores the recommended values; the launcher shows the game's version under the cover art.
 
 During development, `app/narutorise.toml` is the template copied by CMake into the build output. Rebuilding can overwrite preferences saved there; make persistent development changes in the template or keep a backup of your configuration.
 
@@ -57,18 +69,19 @@ ultrawide_target_aspect = 2.3889
 fullscreen = true
 ```
 
-The current template has **ultrawide enabled at `2.3889`**; select 16:9 for standard widescreen monitors. This is an anamorphic implementation: it does not imply individual HUD repositioning or fixes for every video and cutscene. The patch validates the original constant before changing it and logs any mismatch.
+The template and **Reset to Recommended** use **16:9 (`0.0`)**; select 21:9 or 32:9 for ultrawide monitors. This is an anamorphic implementation: it does not imply individual HUD repositioning or fixes for every video and cutscene. The patch validates the original constant before changing it and logs any mismatch.
 
 ## Main settings
 
-The values below match `app/narutorise.toml` at the time of the project analysis:
+The values below match `app/narutorise.toml`:
 
 | Key | Value | Effect |
 | --- | --- | --- |
 | `launcher_language` | `"en"` | Launcher interface; see the seven language codes above |
 | `user_language` | `1` | Game language; see the language codes above |
-| `resolution_scale` | `2` | Internal scale; the launcher offers 1 through 4 |
-| `draw_resolution_scale_x`, `draw_resolution_scale_y` | `2`, `2` | Draw scales, synchronized by the launcher |
+| `resolution_scale` | `1` | Internal scale, the SDK's (and Xenia's) default; the launcher offers 1× through 4× |
+| `draw_resolution_scale_x`, `draw_resolution_scale_y` | `1`, `1` | Draw scales, synchronized by the launcher |
+| `graphics_device` | `""` | Graphics card by the name Windows gives it (both renderers); empty is automatic. See [Graphics card](#graphics-card) |
 | `fullscreen` | `true` | Fullscreen mode |
 | `vsync`, `d3d12_host_vsync` | `true`, `true` | Vertical synchronization |
 | `video_mode_refresh_rate` | `60.0` | Reported refresh rate; not a guarantee of 60 FPS |
@@ -77,22 +90,95 @@ The values below match `app/narutorise.toml` at the time of the project analysis
 | `skip_intro_videos` | `true` | Skip boot logos (`Ubisoft.bik`, `LOGO_CORPO_EMEA.bik`, `LOGO_CORPO_US.bik`); preserve the campaign opening (`Intro.bik`) |
 | `show_fps_overlay` | `false` | FPS/frametime overlay |
 | `input_backend` | `"sdl"` | SDL input |
-| `mnk_mode` | `false` | Mouse and keyboard mode disabled by default |
+| `mnk_mode` | `false` | Keyboard and mouse as a controller; see [Keyboard and mouse](#keyboard-and-mouse) |
 | `log_level` | `"info"` | Logging level |
 
 The launcher provides anisotropic filtering up to 16×. The internal `anisotropic_override` value uses the SDK's encoding; select the desired level through the interface.
 
 `d3d12_readback_resolve = true` and `execute_unclipped_draw_vs_on_cpu = true` are part of the current graphics configuration. The latter is associated with the fix for black flickering during fights, together with the corresponding SDK patch.
 
+## Renderer
+
+Builds with the native renderer (`NARUTORISE_NATIVE_RENDERER_BOOTSTRAP=ON`, see [Build and run](build-and-run.md)) carry two renderers in the same executable, chosen at launch in the launcher (**Settings → Display → Renderer**) or in `narutorise.toml`:
+
+| Renderer | `renderer` |
+| --- | --- |
+| Native, the game's Direct3D drawn with Direct3D 12 (default) | `"native"` |
+| Xenos, the emulated Xbox 360 GPU of the SDK | `"xenos"` |
+
+[Renderers and frame rate](renderers.md) explains how the two differ, how the native renderer presents 60 and 120 FPS, and its known issues.
+
+Builds without the native renderer ignore the key, always use Xenos and leave the native options out of the launcher. Otherwise the launcher shows the options of both renderers: those the selected renderer does not use are greyed out and tagged, and the description panel says why.
+
+| Option | Xenos | Native |
+| --- | --- | --- |
+| Resolution (`resolution_scale`) | 1× to 4× | 1×, 1.5× (`internal_resolution_scale = 1.5`), 2× to 4× |
+| Texture filtering, FXAA, CAS/FSR, VSync, fullscreen | Yes | Yes |
+| Aspect ratio (`ultrawide_target_aspect`) | Yes | No: the image stays 16:9 with bars |
+| Dithering (`present_dither`), FPS overlay (`show_fps_overlay`, F1), F3 overlay | Yes | No |
+| MSAA, transparency antialiasing, frame rate, brightness, frame latency, triple buffering | No | Yes |
+
+With the native renderer, VSync does not change the game speed: the game paces itself.
+
+Native renderer options:
+
+| Key | Default | Effect |
+| --- | --- | --- |
+| `msaa_samples` | `0` | MSAA of the game's multisampled targets: `0` keeps the game's 4×; `2`, `4` or `8` |
+| `transparency_antialiasing` | `false` | Alpha to coverage instead of the alpha test on foliage, fences and other cut-out textures |
+| `frame_rate` | `30` (`60` in the shipped file and the launcher) | Frame rate: `30` keeps the game's; `31` to `240` keep the game's logic at its own step and interpolate the frames in between (the launcher's slider: 30, 60, 120). Where the step is not well below the frame, the frames follow the step instead, so the game keeps its speed: fights (step 1/60 s) show at 60 below `76`, the open world (2/60 s) at 30 from `31` to `37`. With VSync on, it does not go above the monitor's refresh rate |
+| `brightness` | `0.5` | Output brightness; `0.5` is the game's |
+| `internal_resolution_scale` | `0.0` | Fractional internal scale from 1 to 4 (`1.5` = 1920×1080); `0` uses `resolution_scale` |
+| `max_frame_latency` | `1` | Frames queued ahead of the display (1 to 3) |
+| `triple_buffering` | `false` | Three swapchain buffers instead of two |
+
+## Graphics card
+
+The launcher lists the graphics cards that run Direct3D 12 (**Settings → Display → Graphics card**) and saves the chosen one by name in `graphics_device`, as Unleashed Recompiled does with `GraphicsDevice`. Both renderers honor it:
+
+- **Automatic** (`graphics_device = ""`): the native renderer takes the card with the most dedicated video memory; Xenos takes the first card Windows lists.
+- **A named card:** the native renderer asks Plume for it; Xenos sets the SDK's `d3d12_adapter` to its index for that launch only. A name that is no longer present (a removed card) falls back to automatic, with a warning in the log.
+
+The executable also exports `NvOptimusEnablement` and `AmdPowerXpressRequestHighPerformance`, so hybrid laptops (NVIDIA Optimus, AMD PowerXpress) run the game on the dedicated card. The log names the card in use: `DXGI adapter:` for Xenos, `Native renderer adapter:` for the native renderer.
+
+## Keyboard and mouse
+
+Turn on **Settings → Controls → Use keyboard and mouse**. The keyboard and mouse act as an Xbox controller and work alongside a connected controller. The game still shows the controller's buttons.
+
+- **Mouse moves the camera.** While exploring, the mouse turns the camera itself, at a fixed angle per pixel: at 100% **Sensitivity** (from 10% to 300%), one full turn takes about 2,100 pixels. The camera turns at most about 340 degrees per second, the speed the game's camera keeps up with; faster motion finishes over the next frames. Elsewhere, such as in fights, the mouse stands in for the right stick. While the game window has focus, the cursor stays inside it; Alt+Tab releases it.
+- **Map keys…** gives each controller input two keys. Click a field and press the new key within 5 seconds; right-click a field to clear it. A key already in use leaves its previous input. F1, F3, F4, F7 and Backtick belong to the game's overlays and cannot be mapped. **Restore default keys** brings back the layout below.
+
+Keys are recorded by their position on the keyboard, as the game reads them, and shown with your layout's labels: on an ABNT2 keyboard, the key to the right of L shows as Ç.
+
+| Input | Default keys |
+| --- | --- |
+| Left stick | W, A, S, D |
+| Right stick (camera) | Mouse, arrow keys |
+| A | Space |
+| B | E, Backspace |
+| X | Left mouse button, J |
+| Y | Right mouse button, K |
+| LB / RB | Q / R |
+| LT / RT | Ctrl / Shift |
+| L3 / R3 | C / middle mouse button, V |
+| Start / Back | Enter, Esc / Tab |
+| D-pad | 1, 2, 3, 4 (up, down, left, right); numpad 8, 2, 4, 6 |
+
+In `narutorise.toml`, the options are `mnk_mode`, `mnk_mouse`, `mnk_sensitivity` (`1.0` = 100%) and one `keybind_*` per input, such as `keybind_a = "Space"`. A value lists alternatives separated by commas, with the SDK's key names (`LMB`, `RMB` and `MMB` for the mouse buttons). Shift, Control and Alt work as keys of their own. A combination such as `Shift+Up` works only while that modifier is not bound on its own. `mouse_camera_direct = false` makes the mouse stand in for the right stick everywhere, and `mouse_camera_trace = true` writes each mouse turn of the camera to the log.
+
+With keyboard and mouse on, closing the game takes about 3 seconds, as with a controller connected.
+
 ## Shortcuts
 
 | Key | Action |
 | --- | --- |
-| `F1` | Toggle the FPS and frametime overlay (shows the guest and host frame rates) |
-| `F3` | Toggle the SDK debug overlay (guest frame stats, build stamp, and per-frame counters when built with perf counters) |
+| `F1` | Toggle the FPS and frametime overlay (shows the guest and host frame rates; Xenos renderer) |
+| `F3` | Toggle the SDK debug overlay (guest frame stats, build stamp, and per-frame counters when built with perf counters; Xenos renderer) |
 | `Alt+F4` | Request game shutdown |
 
 The FPS overlay (`F1`) shows two rates: **Guest** — the game's own frame rate, measured on every guest swap, which is what game speed follows — and **Host** — the window present rate, which can be much higher on high-refresh displays. Slow motion with a high host rate means the guest rate is below the game's target.
+
+The window title shows the game's name and version. The native renderer has no overlays; with the environment variable `REX_NATIVE_FPS_TITLE=1` (set for your Windows user, so the launcher passes it on), it adds the frame rate and frame time to the window title, visible in windowed mode.
 
 ## Folders and user data
 
@@ -114,6 +200,8 @@ Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'narutorise'
 ```
 
 Back up the entire `narutorise/` folder in Documents to preserve saves, content, and metadata. The runtime supports overriding `user_data_root` and `cache_root`, but the launcher's DLC manager uses the default Documents path; custom locations require consistent manual organization.
+
+The game reads `user_data_root` before `narutorise.toml`, so in the TOML file it takes effect only when the launcher starts the game: the launcher passes it on the command line (a relative path is relative to the launcher's folder). Started directly, the game takes it from `--user_data_root` or the `REX_USER_DATA_ROOT` environment variable.
 
 To specify extracted game data and a Title Update:
 

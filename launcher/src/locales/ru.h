@@ -4,57 +4,44 @@ namespace localization_strings {
 
 inline constexpr const char* kRu[] = {
     "Naruto: Rise of a Ninja",  // WindowTitle
-    "NARUTO: RISE OF A NINJA",  // AppTitle
-    "Рекомпиляция для ПК (ReXGlue)",  // AppSubtitle
     "ИГРАТЬ",  // TabPlay
     "НАСТРОЙКИ",  // TabSettings
     "ФАЙЛЫ ИГРЫ",  // TabGameFiles
-    "Графика",  // GroupGraphics
+    "Качество",  // GroupQuality
     "Управление",  // GroupControls
-    "Монитор:",  // DisplayLabel
-    "Соотношение сторон:",  // AspectLabel
+    "Соотношение сторон",  // AspectLabel
     "16:9 - Стандартное (оригинал)",  // Aspect16x9
-    "21:9 - UltraWide (3440x1440)",  // Aspect21x9
-    "32:9 - Super UltraWide (5120x1440)",  // Aspect32x9
-    "Изменяет горизонтальный угол обзора 3D-камеры без растяжения и искажения персонажей.",  // AspectTooltip
-    "Разрешение:",  // ResolutionLabel
-    "1280x720 - 1x (оригинал)",  // Res1x
-    "2560x1440 - 2x (рекомендуется)",  // Res2x
-    "3840x2160 - 3x (4K UHD)",  // Res3x
-    "5120x2880 - 4x (5K UHD)",  // Res4x
-    "Рендерер:",  // RendererLabel
-    "Фильтрация текстур:",  // TextureFilteringLabel
+    "21:9 - UltraWide",  // Aspect21x9
+    "32:9 - Super UltraWide",  // Aspect32x9
+    "Изменяет горизонтальный угол обзора 3D-камеры без растяжения и искажения персонажей.",  // AspectDescription
+    "Разрешение",  // ResolutionLabel
+    "Рендерер",  // RendererLabel
+    "Фильтрация текстур",  // TextureFilteringLabel
     "По умолчанию",  // AnisoDefault
-    "Сглаживание:",  // AntiAliasingLabel
-    "Отключено",  // AaOff
-    "FXAA",  // AaFxaa
-    "FXAA Extreme",  // AaFxaaExtreme
-    "Постобработка:",  // PostProcessingLabel
+    "FXAA",  // FxaaLabel
+    "Отключено",  // FxaaOff
+    "Обычный",  // FxaaNormal
+    "Экстремальный",  // FxaaExtreme
+    "Постобработка",  // PostProcessingLabel
     "Билинейная (по умолчанию)",  // PostBilinear
     "CAS (резкость)",  // PostCas
     "FSR EASU (масштабирование)",  // PostFsr
     "Дизеринг",  // DitherLabel
     "Счётчик FPS",  // FpsOverlayLabel
     "Полный экран",  // FullscreenLabel
-    "VSync (лимит 60 Гц)",  // VsyncLabel
-    "Оставьте включённым для правильной скорости анимации и физики игры.",  // VsyncTooltip
+    "VSync",  // VsyncLabel
+    "Оставьте включённым для правильной скорости анимации и физики игры.",  // VsyncDescription
     "Использовать SDL для геймпадов (Xbox / PlayStation)",  // SdlInputLabel
-    "Геймпад:",  // ControllerStatusLabel
+    "Геймпад",  // ControllerLabel
     "Геймпад не найден (клавиатура и мышь)",  // NoControllerDetected
     "Пропускать вступительные ролики (логотипы Ubisoft)",  // SkipIntroLabel
-    "Язык:",  // LanguageLabel
     "ИГРАТЬ",  // BtnPlay
     "Рекомендуемые",  // BtnResetRecommended
-    "Сохранить",  // BtnSaveSettings
     "Открыть папку игры",  // BtnOpenFolder
     "Настройки применяются при запуске игры.",  // SettingsAppliedNotice
-    "Настройки сохранены.",  // SettingsSavedNotice
     "Игра готова",  // StatusReady
     "Файлы игры не найдены",  // StatusNotFound
-    "Файлы игры найдены в: %s",  // FilesFoundIn
     "Поместите извлечённые файлы Xbox 360 в 'game' или выберите их папку в разделе ФАЙЛЫ ИГРЫ. ISO можно извлечь в установщике.",  // FilesMissingDesc
-    "Требуются оригинальные извлечённые файлы игры Xbox 360. Извлеките ISO с помощью установщика или скопируйте файлы в 'game'.",  // FilesNotice
-    "Текущий путь: %s",  // CurrentPathLabel
     "(Папка не найдена)",  // NoneDetected
     "Выбрать папку извлечённой игры...",  // BtnSelectFolder
     "Восстановить путь",  // BtnResetDefault
@@ -68,20 +55,16 @@ inline constexpr const char* kRu[] = {
     "Вернитесь в Деревню Скрытого Листа.",  // PlayIntro
     "Файлы игры найдены. Можно играть.",  // ReadyDetail
     "Управление файлами игры",  // ManageFiles
-    "Настройте игру для своего ПК.",  // SettingsIntro
     "Укажите оригинальные файлы для версии на ПК.",  // FilesIntro
     "Папка игры",  // FolderHeading
     "Выберите папку с default.xex. Оригинальные файлы не перемещаются и не удаляются.",  // FolderHint
     "У вас ISO-образ?",  // SetupHeading
     "Снова запустите установщик, чтобы извлечь оригинальный ISO Xbox 360. Импорт ISO доступен в установщике.",  // SetupHint
     "Рекомендуемые настройки применены.",  // RecommendedApplied
-    "Не удалось сохранить. Проверьте права на запись в папку.",  // SaveFailed
     "Исполняемый файл версии для ПК отсутствует. Переустановите её с помощью установщика.",  // ExeMissing
     "Версия для ПК не найдена",  // ExeMissingStatus
     "Файлы игры найдены",  // FilesDetected
-    "Закрыть лаунчер",  // Exit
     "DLC",  // TabDlc
-    "Дополнительный контент",  // DlcHeading
     "Установите DLC с персонажами для Naruto: Rise of a Ninja.",  // DlcIntro
     "Установленные DLC",  // DlcInstalledHeading
     "DLC ещё не установлены.",  // DlcNoInstalled
@@ -145,15 +128,83 @@ inline constexpr const char* kRu[] = {
     "Удаление завершено. Некоторые файлы могут оставаться до закрытия этого окна.",  // UnDone
     "Ошибка удаления: %s",  // UnFailed
     "Игра",  // GroupGame
-    "Язык игры:",  // GameLanguageLabel
+    "Язык игры",  // GameLanguageLabel
     "Английский",  // GameLanguageEnglish
     "Французский",  // GameLanguageFrench
     "Немецкий",  // GameLanguageGerman
     "Испанский",  // GameLanguageSpanish
     "Итальянский",  // GameLanguageItalian
     "Другой (%u)",  // GameLanguageCustom
-    "Применяется при запуске игры. Доступные тексты и озвучка зависят от файлов игры.",  // GameLanguageHint
+    "Применяется при запуске игры. Доступные тексты и озвучка зависят от файлов игры.",  // GameLanguageDescription
     "Язык интерфейса лаунчера",  // LauncherLanguageTooltip
+    "Xenos (эмуляция GPU)",  // RendererXenos
+    "Нативный (Direct3D 12)",  // RendererNative
+    "Нативный рендерер рисует игру напрямую через Direct3D 12 и используется по умолчанию: быстрее и с дополнительными настройками. Xenos эмулирует GPU Xbox 360 и поддерживает всю игру; выберите его, если с нативным рендерером что-то отображается неправильно.",  // RendererDescription
+    "Недоступно с нативным рендерером. Чтобы включить, выберите Xenos в пункте «Рендерер».",  // XenosOnlyReason
+    "MSAA",  // MsaaLabel
+    "4x (оригинал)",  // MsaaOriginal
+    "Мультисэмплинг 3D-сцен игры. Для 8x нужна более мощная видеокарта.",  // MsaaDescription
+    "Сглаживание прозрачности",  // TransparencyAaLabel
+    "Сглаживает края листвы, заборов и других вырезанных текстур (alpha to coverage).",  // TransparencyAaDescription
+    "Частота кадров",  // FrameRateLabel
+    "30 — исходная частота игры. Выше логика игры сохраняет свой темп, а промежуточные кадры интерполируются. С VSync частота не выше частоты монитора; высокие значения требуют быстрого процессора.",  // FrameRateDescription
+    "Яркость",  // BrightnessLabel
+    "50 — исходная яркость игры.",  // BrightnessDescription
+    "Задержка кадров",  // FrameLatencyLabel
+    "1 (минимальная)",  // FrameLatencyLowest
+    "Кадры в очереди перед выводом на экран. 1 даёт наименьшую задержку ввода; 2 или 3 могут сгладить неровное время кадра.",  // FrameLatencyDescription
+    "Тройная буферизация",  // TripleBufferingLabel
+    "Три буфера вывода вместо двух.",  // TripleBufferingDescription
+    "Синхронизирует вывод с экраном. С нативным рендерером скорость игры не зависит от VSync.",  // VsyncNativeDescription
+    "Видеокарта",  // GraphicsDeviceLabel
+    "Автоматически",  // GraphicsDeviceAuto
+    "Видеокарта, на которой работает игра. «Автоматически» оставляет выбор рендереру. На ноутбуках с двумя видеокартами выберите дискретную (NVIDIA или AMD).",  // GraphicsDeviceDescription
+    "Экран",  // GroupDisplay
+    "Дополнительно",  // GroupAdvanced
+    "только Xenos",  // XenosOnlyTag
+    "только нативный",  // NativeOnlyTag
+    "Только с нативным рендерером. Чтобы включить, выберите «Нативный» в пункте «Рендерер».",  // NativeOnlyReason
+    "Разрешение, в котором рисуется игра, кратное исходным 1280×720. Чем выше значение, тем чётче изображение и тем мощнее нужна видеокарта.",  // ResolutionDescription
+    "Анизотропная фильтрация сохраняет чёткость текстур на поверхностях под углом, например на полу и дорогах.",  // TextureFilteringDescription
+    "Сглаживает зубчатые края, фильтруя итоговое изображение. «Экстремальный» сглаживает сильнее и может размыть мелкие детали.",  // FxaaDescription
+    "Как изображение подгоняется под экран. CAS повышает резкость, FSR масштабирует с повышением резкости, а билинейная фильтрация оставляет картинку мягкой.",  // PostProcessingDescription
+    "Добавляет мелкий шум, скрывающий цветовые полосы в градиентах.",  // DitherDescription
+    "Показывает частоту и время кадра в углу экрана. F1 включает и выключает его в игре.",  // FpsOverlayDescription
+    "Запускает игру в полноэкранном режиме. Если выключено, игра работает в окне.",  // FullscreenDescription
+    "Пропускает логотипы при запуске игры. Вступительный ролик сохраняется.",  // SkipIntroDescription
+    "Читает геймпады через SDL, который распознаёт геймпады Xbox, PlayStation и другие. Если выключено, игра использует XInput, который распознаёт только Xbox-совместимые геймпады.",  // SdlInputDescription
+    "Подключённый сейчас геймпад, под именем, которое ему даёт SDL.",  // ControllerDescription
+    "Клавиатура и мышь",  // KeyboardMouseLabel
+    "Клавиатура и мышь заменяют геймпад Xbox и работают вместе с подключённым геймпадом. Если мышь управляет камерой, курсор остаётся в окне игры, пока оно активно; Alt+Tab освобождает его. Игра по-прежнему показывает кнопки геймпада.",  // KeyboardMouseDescription
+    "Мышь управляет камерой",  // MouseCameraLabel
+    "Камера (правый стик) двигается мышью. Если выключено, камера двигается только клавишами правого стика.",  // MouseCameraDescription
+    "Чувствительность",  // MouseSensitivityLabel
+    "Как быстро камера следует за мышью. 100% — значение по умолчанию.",  // MouseSensitivityDescription
+    "Клавиши",  // KeysLabel
+    "Клавиши и кнопки мыши для каждой кнопки геймпада, по две на кнопку.",  // KeysDescription
+    "Назначить клавиши…",  // MapKeysButton
+    "Назначение клавиш",  // MapKeysTitle
+    "Управление › Клавиатура и мышь",  // MapKeysPath
+    "Кнопки",  // KeysButtonsHeading
+    "Левый стик",  // LeftStickName
+    "Правый стик",  // RightStickName
+    "Крестовина",  // DpadName
+    "+ мышь",  // KeysPlusMouse
+    "Вверх",  // DirectionUp
+    "Вниз",  // DirectionDown
+    "Влево",  // DirectionLeft
+    "Вправо",  // DirectionRight
+    "Нажмите на поле, затем новую клавишу (5 с). Правый щелчок очищает. Занятая клавиша снимается с прежней кнопки.",  // KeysHint
+    "Нажмите… %d",  // KeyCapturePrompt
+    "Вернуть клавиши по умолчанию",  // KeysRestoreDefaults
+    "Готово",  // KeysDone
+    "%s снята с кнопки %s.",  // KeyMovedStatus
+    "%s используется игрой и не может быть назначена.",  // KeyReservedStatus
+    "Клавиши по умолчанию восстановлены.",  // KeysRestoredStatus
+    "Пробел",  // KeySpaceName
+    "ЛКМ",  // MouseLeftName
+    "ПКМ",  // MouseRightName
+    "СКМ",  // MouseMiddleName
 };
 
 }  // namespace localization_strings

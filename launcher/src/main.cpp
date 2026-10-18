@@ -14,6 +14,7 @@
 #include "config_manager.h"
 #include "game_paths.h"
 #include "localization.h"
+#include "pages/key_mapping.h"
 #include "texture_loader.h"
 #include "ui.h"
 #include "theme.h"
@@ -179,6 +180,12 @@ int main(int argc, char* argv[]) {
   ImGui_ImplDX11_Init(g_pd3dDevice, g_pd3dDeviceContext);
 #endif
 
+#if defined(_WIN32)
+  LauncherUI ui(window, base_dir, {cover_tex.srv, cover_tex.width, cover_tex.height});
+#else
+  LauncherUI ui(window, base_dir, {});
+#endif
+
   bool running = true;
   bool request_launch = false;
   std::string status_msg = "";
@@ -186,6 +193,8 @@ int main(int argc, char* argv[]) {
   while (running) {
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
+      // A key being mapped is the launcher's, not ImGui's.
+      if (launcher_ui::CaptureKeyEvent(event)) continue;
       ImGui_ImplSDL3_ProcessEvent(&event);
       if (event.type == SDL_EVENT_QUIT) {
         running = false;
@@ -210,12 +219,7 @@ int main(int argc, char* argv[]) {
     ImGui_ImplSDL3_NewFrame();
     ImGui::NewFrame();
 
-#if defined(_WIN32)
-    LauncherUI::Render(window, base_dir, config, request_launch, status_msg, cover_tex.srv,
-                       cover_tex.width, cover_tex.height);
-#else
-    LauncherUI::Render(window, base_dir, config, request_launch, status_msg, nullptr);
-#endif
+    ui.Render(config, request_launch, status_msg);
 
     ImGui::Render();
 #if defined(_WIN32)
@@ -234,12 +238,20 @@ int main(int argc, char* argv[]) {
         request_launch = false;
         continue;
       }
+      // The SDK reads user_data_root before narutorise.toml, so the setting
+      // reaches the game only on the command line. Relative to the launcher.
+      std::filesystem::path user_data;
+      if (!config.user_data_root.empty()) {
+        user_data = std::filesystem::u8path(config.user_data_root);
+        if (user_data.is_relative()) user_data = base_dir / user_data;
+      }
 
 #if defined(_WIN32)
       std::filesystem::path game_exe = base_dir / "narutorise.exe";
       if (std::filesystem::exists(game_exe)) {
         std::wstring cmdline = L"\"" + game_exe.wstring() + L"\"";
         cmdline += L" --game_data_root=\"" + game_data.wstring() + L"\"";
+        if (!user_data.empty()) cmdline += L" --user_data_root=\"" + user_data.wstring() + L"\"";
 
         std::vector<wchar_t> cmd_buf(cmdline.begin(), cmdline.end());
         cmd_buf.push_back(L'\0');
@@ -271,10 +283,12 @@ int main(int argc, char* argv[]) {
       if (std::filesystem::exists(game_exe)) {
         std::string exe_str = game_exe.string();
         std::string arg_root = "--game_data_root=" + game_data.string();
-        const char* args[3];
+        std::string arg_user = "--user_data_root=" + user_data.string();
+        const char* args[4];
         args[0] = exe_str.c_str();
         args[1] = arg_root.c_str();
-        args[2] = nullptr;
+        args[2] = user_data.empty() ? nullptr : arg_user.c_str();
+        args[3] = nullptr;
 
         SDL_PropertiesID props = SDL_CreateProperties();
         SDL_SetPointerProperty(props, SDL_PROP_PROCESS_CREATE_ARGS_POINTER, args);

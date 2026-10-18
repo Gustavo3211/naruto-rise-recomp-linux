@@ -6,12 +6,24 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(LAUNCHER_SOURCES
     src/main.cpp
+    src/app_version.cpp
     src/config_manager.cpp
     src/content_manager.cpp
+    src/folders.cpp
+    src/graphics_devices.cpp
+    src/key_bindings.cpp
+    src/key_names.cpp
     src/localization.cpp
     src/texture_loader.cpp
     src/theme.cpp
     src/ui.cpp
+    src/widgets.cpp
+    src/pages/dlc.cpp
+    src/pages/game_files.cpp
+    src/pages/key_mapping.cpp
+    src/pages/play.cpp
+    src/pages/settings.cpp
+    src/pages/settings_form.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../sdk/thirdparty/imgui/imgui.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../sdk/thirdparty/imgui/imgui_draw.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../sdk/thirdparty/imgui/imgui_tables.cpp
@@ -46,6 +58,15 @@ target_include_directories(narutorise_launcher PRIVATE
 target_link_libraries(narutorise_launcher PRIVATE
     SDL3::SDL3-static
 )
+
+# The release version, shown under the cover when the copy has no
+# narutorise.version file (development builds).
+set(NARUTORISE_VERSION_FILE ${CMAKE_CURRENT_SOURCE_DIR}/../packaging/version.iss)
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${NARUTORISE_VERSION_FILE})
+file(STRINGS ${NARUTORISE_VERSION_FILE} NARUTORISE_VERSION_LINE REGEX "#define MyAppVersion")
+if(NARUTORISE_VERSION_LINE MATCHES "\"([^\"]+)\"")
+    target_compile_definitions(narutorise_launcher PRIVATE NARUTORISE_VERSION="${CMAKE_MATCH_1}")
+endif()
 if(MSVC)
     target_compile_options(narutorise_launcher PRIVATE /utf-8)
 endif()
@@ -53,6 +74,7 @@ endif()
 if(WIN32)
     target_link_libraries(narutorise_launcher PRIVATE
         d3d11
+        d3d12
         dxgi
         shell32
     )
@@ -77,11 +99,22 @@ add_dependencies(narutorise_launcher narutorise_launcher_assets)
 # Configuration regression tests can run without game files or the SDL UI.
 add_executable(narutorise_config_manager_test EXCLUDE_FROM_ALL
     tests/test_config_manager.cpp
-    src/config_manager.cpp)
+    src/config_manager.cpp
+    src/key_bindings.cpp)
 target_include_directories(narutorise_config_manager_test PRIVATE
     src
     ${REXSDK_INSTALL_DIR}/include)
 set_target_properties(narutorise_config_manager_test PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}")
+
+# The key names the launcher writes against the SDK's, and the value format.
+add_executable(narutorise_key_bindings_test EXCLUDE_FROM_ALL
+    tests/test_key_bindings.cpp
+    src/key_bindings.cpp
+    src/key_names.cpp)
+target_include_directories(narutorise_key_bindings_test PRIVATE src)
+target_link_libraries(narutorise_key_bindings_test PRIVATE SDL3::SDL3-static)
+set_target_properties(narutorise_key_bindings_test PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}")
 
 add_executable(narutorise_localization_test EXCLUDE_FROM_ALL
@@ -92,6 +125,13 @@ set_target_properties(narutorise_localization_test PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}")
 if(MSVC)
     target_compile_options(narutorise_localization_test PRIVATE /utf-8)
+endif()
+
+# The game executable carries the native renderer next to the Xenos plugin:
+# the launcher offers the choice and the native renderer's options.
+if(NARUTORISE_NATIVE_RENDERER_BOOTSTRAP)
+    target_compile_definitions(narutorise_launcher PRIVATE NARUTORISE_LAUNCHER_NATIVE_RENDERER=1)
+    target_compile_definitions(narutorise_config_manager_test PRIVATE NARUTORISE_LAUNCHER_NATIVE_RENDERER=1)
 endif()
 
 # ---------------------------------------------------------------------------

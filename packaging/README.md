@@ -10,6 +10,9 @@ See also: [Build and run](../docs/build-and-run.md), [DLCs](../docs/dlc.md), and
 - **`installer.iss`**: [Inno Setup](https://jrsoftware.org/isdl.php) script to build the standard Windows setup wizard (`NarutoRiseInstaller.exe`).
 - **`install.ps1`**: Standalone helper script for portable zip users to generate Desktop and Start Menu shortcuts with one click.
 - **`version.iss`**: Default release version; override using `-Version` without modifying source.
+- **`third-party-licenses.psd1`**: Third-party components the release ships, with their licenses. `package-release.ps1` copies each license text and the project `LICENSE` into the package's `licenses/` folder and writes its `README.txt` index, including the source revisions of the LGPL libraries in `rexruntime.dll`. Update it when a shipped dependency changes.
+- **`licenses/`**: Verbatim copies of license texts that exist only inside a source header or the upstream repository.
+- **`private/`**: Local files derived from the game that packaging needs but Git ignores. `private/shader_cache/` holds the Xenos shader storage (`555307E5.xsh`, `555307E5.rtv.d3d12.xpso`), copied from `Documents/narutorise/cache/shaders/shareable/` after playing with the Xenos renderer. The native renderer's shader cache needs no file here: the build embeds it in `narutorise.exe`.
 - **`tests/`**: Synthetic ISO helper tests and isolated Inno install/uninstall tests.
 
 ---
@@ -20,10 +23,7 @@ Run from the repository root in PowerShell:
 ```powershell
 powershell -ExecutionPolicy Bypass -File packaging/package-release.ps1
 ```
-To force a rebuild prior to packaging:
-```powershell
-powershell -ExecutionPolicy Bypass -File packaging/package-release.ps1 -Build
-```
+The script always refreshes the build first; `-Build` is still accepted, but changes nothing.
 
 Output generated in `dist/`:
 - `dist/naruto-rise-recomp-win-amd64/` (portable release directory)
@@ -148,17 +148,19 @@ replacement by an older installer; reinstalling the same version is allowed.
 The version marker is also included in portable packages and is removed by the
 Inno uninstaller. Keep the same production AppId for every release.
 
-The `0.1.0-beta.2` and `0.1.0-beta.3` installers accept migration from beta 1's shipped
-`1.0.0-beta.1` identifier, the old `1.0.0` label and the local `1.0.1`/`1.0.2`
-builds, preserving user data. The public `v0.1.0-beta.1` release tag did not
-match its installer's internal version. This numbering reset is limited to
-betas 2 and 3; unrelated newer versions remain protected, and the
-updated installer code rejects the reverse transition to these old labels.
+The `0.1.0-beta.2`, `0.1.0-beta.3` and `0.2.0-beta.1` installers accept migration from
+beta 1's shipped `1.0.0-beta.1` identifier, the old `1.0.0` label and the local
+`1.0.1`/`1.0.2` builds, preserving user data. The public `v0.1.0-beta.1` release tag
+did not match its installer's internal version. This numbering reset is limited to
+these releases; unrelated newer versions remain protected, and the updated
+installer code rejects the reverse transition to these old labels. Updates between
+the listed releases follow the normal numeric check (`0.1.0-beta.3` to `0.2.0-beta.1`
+is allowed, the reverse is not).
 
 Build this beta update with:
 
 ```powershell
-pwsh -File packaging/package-release.ps1 -Build -Version 0.1.0-beta.3
+pwsh -File packaging/package-release.ps1 -Version 0.2.0-beta.1
 ```
 
 For automation, the installer accepts `/MODE=update` or `/MODE=install`; when
@@ -195,7 +197,9 @@ See [installer verification](../docs/installer-status.md) for available checks a
 
 The native C++ launcher (`narutorise_launcher.exe`):
 - **Multi-language support:** English (default), Brazilian Portuguese, French, German, Spanish, Italian, and Russian, selectable in the header.
-- **Game preferences:** Native game language selection (English, French, German, Spanish, Italian) and skipping intro videos in Settings → Game.
-- **Graphic configuration:** Internal resolution scale (1x to 4x), Ultrawide (16:9, 21:9, 32:9), 60 Hz VSync, Anisotropic Filtering (up to 16x), Fullscreen.
+- **Settings in groups:** Game, Display, Quality, Controls, and Advanced, with a description panel for the option under the mouse and **Reset to Recommended**. See [Configuration](../docs/configuration.md#where-to-configure-settings).
+- **Game preferences:** Native game language selection (English, French, German, Spanish, Italian) and skipping intro videos.
+- **Graphics configuration:** Renderer, graphics card, internal resolution (1x to 4x), aspect ratio (16:9, 21:9, 32:9), brightness, frame rate (30, 60, 120), VSync, fullscreen, MSAA, FXAA, CAS/FSR, anisotropic filtering (up to 16x), and transparency antialiasing. Options the selected renderer does not use are greyed out; builds without the native renderer leave its options out.
+- **DLC:** Imports packages or extracted content and lists the installed packs by name.
 - **Game file discovery:** Auto-detects `game/` or opens a native extracted-folder picker.
-- **Clean launch:** Automatically persists choices to `narutorise.toml` and launches `narutorise.exe`.
+- **Clean launch:** Persists choices to `narutorise.toml` when you play or close the launcher, launches `narutorise.exe`, and shows the installed version under the cover art.

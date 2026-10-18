@@ -87,7 +87,9 @@ foreach ($asset in @('cover.jpg', 'narutorise.ico', 'fonts\Lato-Regular.ttf', 'f
 }
 $shaderFiles = @(Get-ChildItem (Join-Path $AppBuildDir 'shader_cache\555307E5.*') -File |
     Where-Object { $_.Extension -in @('.xsh', '.xpso', '.vkspv') })
-if (-not $shaderFiles.Count) { throw 'Missing Naruto shader cache.' }
+if (-not $shaderFiles.Count) {
+    throw 'Missing Naruto shader cache: place 555307E5.xsh and 555307E5.rtv.d3d12.xpso in packaging\private\shader_cache (or set NARUTORISE_SHADER_STORAGE_DIR).'
+}
 
 # Reject non-redistributable debug CRT imports, even if a binary was left over
 # from a previous configuration. llvm-readobj accompanies the LLVM compiler.
@@ -118,6 +120,34 @@ foreach ($name in $peFiles) {
     }
 }
 
+# Notices of the third-party components this build ships (third-party-licenses.psd1).
+$ReleaseParts = @{
+    FidelityFX = $binaries -contains $FidelityFxDll
+    NativeRenderer = $cache -match '(?m)^NARUTORISE_NATIVE_RENDERER_BOOTSTRAP:BOOL=(ON|TRUE|YES|1)\s*$'
+}
+$Licenses = @((Import-PowerShellDataFile (Join-Path $PSScriptRoot 'third-party-licenses.psd1')).Components |
+    Where-Object { -not $_.Condition -or $ReleaseParts[$_.Condition] })
+if (-not (Test-Path -LiteralPath (Join-Path $RootDir 'LICENSE') -PathType Leaf)) { throw 'Missing project LICENSE.' }
+foreach ($component in $Licenses) {
+    if (-not (Test-Path -LiteralPath (Join-Path $RootDir $component.File) -PathType Leaf)) {
+        throw "Missing license text for $($component.Name): $($component.File)"
+    }
+}
+# The LGPL libraries are statically linked into rexruntime.dll: name the exact
+# source revisions it is built from, so it can be rebuilt with modified copies.
+function Get-SourceRevision([string]$Path) {
+    $revision = git -C $Path rev-parse HEAD
+    if ($LASTEXITCODE -ne 0 -or -not $revision) { throw "Cannot read the source revision of $Path." }
+    return $revision.Trim()
+}
+$SdkDir = Join-Path $RootDir 'sdk'
+$SourceRevisions = @(
+    @{ Name = 'Naruto: Rise of a Ninja PC port (SDK patches: patches\sdk)'; Url = 'https://github.com/jorjbarbosa/naruto-rise-recomp'; Revision = Get-SourceRevision $RootDir }
+    @{ Name = 'ReXGlue SDK (rexruntime.dll)'; Url = 'https://github.com/rexglue/rexglue-sdk'; Revision = Get-SourceRevision $SdkDir }
+    @{ Name = 'FFmpeg'; Url = 'https://github.com/wmarti/FFmpeg'; Revision = Get-SourceRevision (Join-Path $SdkDir 'thirdparty\FFmpeg') }
+    @{ Name = 'libmspack'; Url = 'https://github.com/kyz/libmspack'; Revision = Get-SourceRevision (Join-Path $SdkDir 'thirdparty\libmspack') }
+)
+
 # Build into a fresh staging directory. A failed compile leaves the previous
 # release intact; only complete, verified artifacts are published.
 $Stage = Join-Path $OutputRootDir ('.packaging-' + [guid]::NewGuid().ToString('N'))
@@ -134,7 +164,37 @@ try {
     }
     Copy-Item -LiteralPath (Join-Path $RootDir 'launcher\assets\fonts') -Destination (Join-Path $Portable 'assets') -Recurse
     $shaderFiles | Copy-Item -Destination (Join-Path $Portable 'shader_cache')
-    Copy-Item -LiteralPath (Join-Path $RootDir 'tools\extract-xiso\LICENSE.TXT') -Destination (Join-Path $Portable 'licenses\extract-xiso.txt')
+    $LicenseDir = Join-Path $Portable 'licenses'
+    Copy-Item -LiteralPath (Join-Path $RootDir 'LICENSE') -Destination (Join-Path $LicenseDir 'naruto-rise-recomp.txt')
+    foreach ($component in $Licenses) {
+        Copy-Item -LiteralPath (Join-Path $RootDir $component.File) -Destination (Join-Path $LicenseDir $component.Target)
+    }
+    $componentText = ($Licenses | ForEach-Object {
+        "$($_.Name)`r`n  License: $($_.License) ($($_.Target))`r`n  Source:  $($_.Url)`r`n  Used in: $($_.Usage)"
+    }) -join "`r`n`r`n"
+    $sourceText = ($SourceRevisions | ForEach-Object { "  $($_.Name)`r`n    $($_.Url)/tree/$($_.Revision)" }) -join "`r`n"
+    Set-Content (Join-Path $LicenseDir 'README.txt') -Encoding UTF8 -Value @"
+THIRD-PARTY NOTICES - NARUTO: RISE OF A NINJA PC PORT ($Version)
+
+This port's own code is licensed under the MIT License: naruto-rise-recomp.txt.
+It includes the components below, each under its own license; the license texts
+are in this folder. Naruto: Rise of a Ninja, its content, artwork and trademarks
+belong to their respective owners and are not covered by these licenses. Game
+data is not distributed with this port.
+
+$componentText
+
+LGPL SOURCE CODE:
+FFmpeg (LGPL-2.1-or-later) and libmspack (LGPL-2.1-only) are statically linked
+into rexruntime.dll, which is built from the ReXGlue SDK (BSD-3-Clause). The
+complete source code of these libraries and of rexruntime.dll, at the revisions
+this release was built from:
+
+$sourceText
+
+You may modify these libraries, rebuild rexruntime.dll from these sources and
+replace the rexruntime.dll of this package with it.
+"@
     Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'install.ps1') -Destination $Portable
     Set-Content (Join-Path $Portable 'game\PLACE_GAME_FILES_HERE.txt') -Encoding UTF8 -Value @'
 Place your legally obtained, extracted Naruto: Rise of a Ninja Xbox 360 files here.
@@ -171,9 +231,9 @@ FXAA anti-aliasing, AMD FidelityFX CAS/FSR post-processing, anisotropic
 filtering, aspect ratios 16:9 / 21:9 / 32:9, and FPS overlay (F1).
 SDL controller support includes Xbox and PlayStation controllers.
 Microsoft Visual C++ 2015-2022 Redistributable (x64) is required by the game/launcher.
-Alt+F4 closes the game; F11 toggles fullscreen.
+Alt+F4 closes the game.
 
-Game files are not included. extract-xiso notices: licenses\extract-xiso.txt.
+Game files are not included. License and third-party notices: licenses\README.txt.
 "@
 
     $Artifacts = @('naruto-rise-recomp-win-amd64')

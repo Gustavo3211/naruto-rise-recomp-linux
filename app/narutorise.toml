@@ -1,6 +1,12 @@
 # narutorise - runtime configuration (auto-read on startup)
 
 gpu_plugin = "xenos"
+# Renderer: "native" (Direct3D 12, the default) or "xenos" (the emulated GPU),
+# in builds with the native renderer; builds without it always use Xenos.
+renderer = "native"
+# Graphics card by its name as Windows lists it, for both renderers;
+# empty = automatic.
+graphics_device = ""
 d3d12_readback_resolve = true
 skip_intro_videos = true
 
@@ -18,15 +24,48 @@ log_level = "info"
 protect_zero = false
 
 input_backend = "sdl"
+# Keyboard and mouse as a controller, next to a connected one. While exploring,
+# the mouse turns the camera itself at mnk_sensitivity (1.0 = 100%, about one
+# turn every 2,100 pixels); elsewhere it stands in for the right stick.
 mnk_mode = false
+mnk_mouse = true
+mnk_sensitivity = 1.0
+# Keys of each controller input: alternatives separated by commas, with the
+# SDK's key names (LMB, RMB and MMB for the mouse buttons). Shift, Control and
+# Alt can be keys of their own. The launcher maps them under Controls.
+keybind_a = "Space"
+keybind_b = "E,Backspace"
+keybind_x = "LMB,J"
+keybind_y = "RMB,K"
+keybind_left_shoulder = "Q"
+keybind_right_shoulder = "R"
+keybind_left_trigger = "Control"
+keybind_right_trigger = "Shift"
+keybind_lstick_press = "C"
+keybind_rstick_press = "MMB,V"
+keybind_start = "Return,Escape"
+keybind_back = "Tab"
+keybind_lstick_up = "W"
+keybind_lstick_down = "S"
+keybind_lstick_left = "A"
+keybind_lstick_right = "D"
+keybind_rstick_up = "Up"
+keybind_rstick_down = "Down"
+keybind_rstick_left = "Left"
+keybind_rstick_right = "Right"
+keybind_dpad_up = "1,Numpad8"
+keybind_dpad_down = "2,Numpad2"
+keybind_dpad_left = "3,Numpad4"
+keybind_dpad_right = "4,Numpad6"
+keybind_guide = ""
 
 fullscreen = true
 vsync = true
 d3d12_host_vsync = true
 video_mode_refresh_rate = 60.0
-resolution_scale = 2
-draw_resolution_scale_x = 2
-draw_resolution_scale_y = 2
+resolution_scale = 1
+draw_resolution_scale_x = 1
+draw_resolution_scale_y = 1
 d3d12_allow_variable_refresh_rate_and_tearing = true
 
 anisotropic_override = 5
@@ -37,9 +76,23 @@ present_dither = false
 
 show_fps_overlay = false
 
+# Native renderer only (ignored by the Xenos renderer).
+# msaa_samples: 0 = the game's 4x, or 2, 4, 8.
+msaa_samples = 0
+transparency_antialiasing = false
+# Frame rate: 30 keeps the game's; 60 to 240 keep the game's logic at its own
+# step and interpolate the frames in between.
+frame_rate = 60
+# 0.5 = the game's brightness.
+brightness = 0.5
+# Fractional internal scale (1.5 = 1920x1080); 0 = resolution_scale.
+internal_resolution_scale = 0.0
+max_frame_latency = 1
+triple_buffering = false
+
 # Anamorphic Ultrawide (Hells Gate / Xenia Canary style patch).
 # 0.0 = native 16:9; 2.3889 = 21:9 (3440x1440); 3.5556 = 32:9.
-ultrawide_target_aspect = 2.3889
+ultrawide_target_aspect = 0.0
 
 # Launcher interface: "en" (default), "pt_BR", "fr", "de", "es", "it", "ru".
 launcher_language = "en"

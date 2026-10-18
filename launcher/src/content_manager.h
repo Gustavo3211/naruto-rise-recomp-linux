@@ -36,7 +36,8 @@ int InstallDlc(const std::filesystem::path& source,
                const std::filesystem::path& exe_dir,
                std::string& error);
 
-// Lists installed DLC folders (extracted content in the user data tree).
+// Lists installed DLC folders (extracted content in the user data tree), named
+// by the content header the game wrote when it installed them, else by folder.
 std::vector<ContentInfo> ListInstalledDlc();
 
 // Checks whether a file looks like an STFS Xbox 360 package.

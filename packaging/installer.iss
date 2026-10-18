@@ -97,7 +97,7 @@ Source: "{#PackageDir}\shader_cache\555307E5.*"; DestDir: "{app}\shader_cache"; 
 Source: "..\launcher\assets\cover.jpg"; DestDir: "{app}\assets"; Flags: ignoreversion
 Source: "..\launcher\assets\narutorise.ico"; DestDir: "{app}\assets"; Flags: ignoreversion
 Source: "..\launcher\assets\fonts\*"; DestDir: "{app}\assets\fonts"; Flags: ignoreversion
-Source: "..\tools\extract-xiso\LICENSE.TXT"; DestDir: "{app}\licenses"; DestName: "extract-xiso.txt"; Flags: ignoreversion
+Source: "{#PackageDir}\licenses\*"; DestDir: "{app}\licenses"; Flags: ignoreversion
 Source: "{#PackageDir}\narutorise.toml"; DestDir: "{app}"; Flags: onlyifdoesntexist uninsneveruninstall
 Source: "..\tools\extract-xiso\extract-xiso.exe"; Flags: dontcopy
 Source: "{#HelperPath}"; Flags: dontcopy
@@ -325,7 +325,8 @@ end;
 
 function IsRenumberedBetaVersion(const Version: String): Boolean;
 begin
-  Result := (Version = '0.1.0-beta.2') or (Version = '0.1.0-beta.3');
+  Result := (Version = '0.1.0-beta.2') or (Version = '0.1.0-beta.3') or
+    (Version = '0.2.0-beta.1');
 end;
 
 function DestinationError: String;
@@ -347,8 +348,8 @@ begin
   end;
   if not IsExistingInstallation(WizardDirValue) then Exit;
   PreviousVersion := InstalledVersion(WizardDirValue);
-  { Betas 2 and 3 replace beta 1's shipped 1.0.0-beta.1 label, the old 1.0.0
-    label and local 1.0.1/1.0.2 builds.
+  { Betas 2 and 3 of 0.1.0 and 0.2.0-beta.1 replace beta 1's shipped
+    1.0.0-beta.1 label, the old 1.0.0 label and local 1.0.1/1.0.2 builds.
     Scope the numbering reset to these releases; other versions still use the
     normal downgrade check. Reject the reverse transition as well. }
   if IsRenumberedBetaVersion('{#MyAppVersion}') and
