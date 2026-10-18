@@ -1,5 +1,6 @@
 #include "gpu/backend/dispatcher.h"
 #include <windows.h>
+#include <chrono>
 #include <condition_variable>
 #include <cstdlib>
 #include <deque>
@@ -10,6 +11,7 @@
 #include <atomic>
 #include <algorithm>
 #include <fmt/format.h>
+#include "gpu/common/title_loading.h"
 #include "gpu/diagnostics/profile.h"
 #include "gpu/diagnostics/sampler.h"
 
@@ -462,11 +464,23 @@ bool Dispatcher::StartPool(size_t count, unsigned threads,
   auto shared_done = std::make_shared<std::function<void(bool)>>(std::move(done));
   state_->pool_active = threads;
   for (unsigned t = 0; t < threads; ++t)
-    state_->pool.emplace_back([this, engine, count, shared_work, shared_done] {
-      SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_LOWEST);
+    state_->pool.emplace_back([this, engine, count, t, shared_work, shared_done] {
       SetThreadDescription(GetCurrentThread(), L"Native Pipeline Compiler");
-      for (size_t i = 0; !state_->pool_stop.load() && (i = state_->pool_next.fetch_add(1)) < count;)
+      // The pool yields to the game: while the title shows its loading screen
+      // every thread compiles at the highest priority (the player waits anyway);
+      // with the game running, only the first kPoolThreadsInGame threads go on,
+      // at the lowest priority, and the others wait for the next loading screen
+      // (a cold driver cache takes some twenty seconds for the list on ten
+      // threads, and the frames of the first seconds of a world paid for it).
+      int priority = 0;
+      const bool in_game_thread = t < kPoolThreadsInGame;
+      for (size_t i = 0; !state_->pool_stop.load() && (i = state_->pool_next.fetch_add(1)) < count;) {
+        while (!TitleLoading() && !in_game_thread && !state_->pool_stop.load())
+          std::this_thread::sleep_for(std::chrono::milliseconds(50));
+        const int wanted = TitleLoading() ? THREAD_PRIORITY_HIGHEST : THREAD_PRIORITY_LOWEST;
+        if (wanted != priority) SetThreadPriority(GetCurrentThread(), priority = wanted);
         (*shared_work)(i, *engine);
+      }
       if (state_->pool_active.fetch_sub(1) == 1 && *shared_done) (*shared_done)(state_->pool_stop.load());
     });
   return true;
