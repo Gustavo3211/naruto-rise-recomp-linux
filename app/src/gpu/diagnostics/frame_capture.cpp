@@ -81,7 +81,8 @@ std::string ReadFrontBuffer(uint32_t front, uint64_t n) {
 
 // REX_NATIVE_TRANSITION_CAPTURES=<period>
 // reads the front buffer back at every <period>-th own Swap and at each scene
-// change and 1, 3, 10 and 30 Swaps after it, reduced 4 x 4 (box) and written as
+// change and 1, 3, 10 and 30 Swaps after it, reduced 4 x 4 (box;
+// REX_NATIVE_TRANSITION_REDUCE=1 or 2 for a finer one) and written as
 // transition-NNNNN-WxH.rgba with a native-d3d-transition-capture record, at
 // most kTransitionCapturesMax. A scene change is a Swap whose frame moved to
 // another draw class (videos only: at most 8 own draws; menus: below 400; the
@@ -93,6 +94,14 @@ uint64_t TransitionPeriod() {
     if (!Diagnostics()) return uint64_t(0);
     const char* text = std::getenv("REX_NATIVE_TRANSITION_CAPTURES");
     return text && *text ? std::strtoull(text, nullptr, 10) : 0;
+  }();
+  return value;
+}
+uint32_t TransitionReduce() {
+  static const uint32_t value = [] {
+    const char* text = std::getenv("REX_NATIVE_TRANSITION_REDUCE");
+    const uint32_t n = text && *text ? uint32_t(std::strtoul(text, nullptr, 10)) : 4u;
+    return n == 1 || n == 2 ? n : 4u;
   }();
   return value;
 }
@@ -144,7 +153,7 @@ void TransitionCaptureAtSwap(uint32_t front, uint64_t n, uint64_t frame_draws) {
   auto* dispatcher = host::ActiveDispatcher();
   const bool read = dispatcher && dispatcher->Run([&](Engine& engine, std::string& out) {
     return engine.ReadTexture(front, rgba, width, height, out); }, evidence);
-  const uint32_t w = width / 4, h = height / 4;
+  const uint32_t r = TransitionReduce(), w = width / r, h = height / r;
   std::string file = "null";
   uint64_t hash = 0xCBF29CE484222325ull;
   if (read && w && h && rgba.size() >= size_t(width) * height * 4) {
@@ -153,9 +162,9 @@ void TransitionCaptureAtSwap(uint32_t front, uint64_t n, uint64_t frame_draws) {
       for (uint32_t x = 0; x < w; ++x)
         for (uint32_t c = 0; c < 4; ++c) {
           uint32_t sum = 0;
-          for (uint32_t dy = 0; dy < 4; ++dy)
-            for (uint32_t dx = 0; dx < 4; ++dx) sum += rgba[((size_t(y) * 4 + dy) * width + x * 4 + dx) * 4 + c];
-          reduced[(size_t(y) * w + x) * 4 + c] = uint8_t((sum + 8) / 16);
+          for (uint32_t dy = 0; dy < r; ++dy)
+            for (uint32_t dx = 0; dx < r; ++dx) sum += rgba[((size_t(y) * r + dy) * width + x * r + dx) * 4 + c];
+          reduced[(size_t(y) * w + x) * 4 + c] = uint8_t((sum + r * r / 2) / (r * r));
         }
     for (uint8_t v : reduced) hash = (hash ^ v) * 0x100000001B3ull;
     const std::string name = fmt::format("transition-{:05}-{}x{}.rgba", n, w, h);

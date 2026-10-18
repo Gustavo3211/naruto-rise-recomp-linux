@@ -69,7 +69,9 @@ struct DrawCapture {
   std::vector<uint8_t> vs_constants, ps_constants, vs_constants_delta, ps_constants_delta;
   uint64_t vs_constants_version = 0, ps_constants_version = 0;
   uint64_t vs_pending_before = 0, ps_pending_before = 0;
-  std::vector<uint8_t> trace_vs_constants, trace_ps_constants;  // The whole shadows, in a traced frame only.
+  // The whole shadows in a traced frame; the first four vertex rows for the
+  // draw probe (REX_NATIVE_PROBE_TEXTURE).
+  std::vector<uint8_t> trace_vs_constants, trace_ps_constants;
   bool vs_taken_whole = false, ps_taken_whole = false;  // What the take counted (ReturnConstants).
   size_t vs_taken_delta = 0, ps_taken_delta = 0;
   // START evidence, read on the title thread; allocated only on the routes
