@@ -13,7 +13,7 @@ The launcher's **Settings** tab lists its groups on the left; the panel below th
 | Game | Game language, skip intro videos |
 | Display | Renderer, graphics card, resolution, aspect ratio, brightness, frame rate, VSync, fullscreen |
 | Quality | MSAA, FXAA, post-processing (CAS/FSR), texture filtering, transparency AA, dithering |
-| Controls | SDL controllers, the connected controller |
+| Controls | SDL controllers, the connected controller, keyboard and mouse, mouse camera and sensitivity, key mapping |
 | Advanced | Frame latency, triple buffering, FPS overlay |
 
 **Reset to Recommended** restores the recommended values; the launcher shows the game's version under the cover art.
@@ -90,7 +90,7 @@ The values below match `app/narutorise.toml`:
 | `skip_intro_videos` | `true` | Skip boot logos (`Ubisoft.bik`, `LOGO_CORPO_EMEA.bik`, `LOGO_CORPO_US.bik`); preserve the campaign opening (`Intro.bik`) |
 | `show_fps_overlay` | `false` | FPS/frametime overlay |
 | `input_backend` | `"sdl"` | SDL input |
-| `mnk_mode` | `false` | Mouse and keyboard mode disabled by default |
+| `mnk_mode` | `false` | Keyboard and mouse as a controller; see [Keyboard and mouse](#keyboard-and-mouse) |
 | `log_level` | `"info"` | Logging level |
 
 The launcher provides anisotropic filtering up to 16×. The internal `anisotropic_override` value uses the SDK's encoding; select the desired level through the interface.
@@ -140,6 +140,33 @@ The launcher lists the graphics cards that run Direct3D 12 (**Settings → Displ
 - **A named card:** the native renderer asks Plume for it; Xenos sets the SDK's `d3d12_adapter` to its index for that launch only. A name that is no longer present (a removed card) falls back to automatic, with a warning in the log.
 
 The executable also exports `NvOptimusEnablement` and `AmdPowerXpressRequestHighPerformance`, so hybrid laptops (NVIDIA Optimus, AMD PowerXpress) run the game on the dedicated card. The log names the card in use: `DXGI adapter:` for Xenos, `Native renderer adapter:` for the native renderer.
+
+## Keyboard and mouse
+
+Turn on **Settings → Controls → Use keyboard and mouse**. The keyboard and mouse act as an Xbox controller and work alongside a connected controller. The game still shows the controller's buttons.
+
+- **Mouse moves the camera.** While exploring, the mouse turns the camera itself, at a fixed angle per pixel: at 100% **Sensitivity** (from 10% to 300%), one full turn takes about 2,100 pixels. The camera turns at most about 340 degrees per second, the speed the game's camera keeps up with; faster motion finishes over the next frames. Elsewhere, such as in fights, the mouse stands in for the right stick. While the game window has focus, the cursor stays inside it; Alt+Tab releases it.
+- **Map keys…** gives each controller input two keys. Click a field and press the new key within 5 seconds; right-click a field to clear it. A key already in use leaves its previous input. F1, F3, F4, F7 and Backtick belong to the game's overlays and cannot be mapped. **Restore default keys** brings back the layout below.
+
+Keys are recorded by their position on the keyboard, as the game reads them, and shown with your layout's labels: on an ABNT2 keyboard, the key to the right of L shows as Ç.
+
+| Input | Default keys |
+| --- | --- |
+| Left stick | W, A, S, D |
+| Right stick (camera) | Mouse, arrow keys |
+| A | Space |
+| B | E, Backspace |
+| X | Left mouse button, J |
+| Y | Right mouse button, K |
+| LB / RB | Q / R |
+| LT / RT | Ctrl / Shift |
+| L3 / R3 | C / middle mouse button, V |
+| Start / Back | Enter, Esc / Tab |
+| D-pad | 1, 2, 3, 4 (up, down, left, right); numpad 8, 2, 4, 6 |
+
+In `narutorise.toml`, the options are `mnk_mode`, `mnk_mouse`, `mnk_sensitivity` (`1.0` = 100%) and one `keybind_*` per input, such as `keybind_a = "Space"`. A value lists alternatives separated by commas, with the SDK's key names (`LMB`, `RMB` and `MMB` for the mouse buttons). Shift, Control and Alt work as keys of their own. A combination such as `Shift+Up` works only while that modifier is not bound on its own. `mouse_camera_direct = false` makes the mouse stand in for the right stick everywhere, and `mouse_camera_trace = true` writes each mouse turn of the camera to the log.
+
+With keyboard and mouse on, closing the game takes about 3 seconds, as with a controller connected.
 
 ## Shortcuts
 

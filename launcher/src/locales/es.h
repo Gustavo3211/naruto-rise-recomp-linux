@@ -174,6 +174,37 @@ inline constexpr const char* kEs[] = {
     "Omite los logotipos que aparecen al iniciar el juego. El vídeo de apertura se mantiene.",  // SkipIntroDescription
     "Lee los mandos mediante SDL, que reconoce mandos de Xbox, PlayStation y otros. Desactivado, el juego usa XInput, que solo reconoce mandos compatibles con Xbox.",  // SdlInputDescription
     "El mando conectado ahora, con el nombre que le da SDL.",  // ControllerDescription
+    "Usar teclado y ratón",  // KeyboardMouseLabel
+    "El teclado y el ratón sustituyen a un mando de Xbox y funcionan junto con un mando conectado. Con el ratón en la cámara, el cursor queda dentro de la ventana del juego mientras tenga el foco; Alt+Tab lo libera. El juego sigue mostrando los botones del mando.",  // KeyboardMouseDescription
+    "El ratón mueve la cámara",  // MouseCameraLabel
+    "Mueve la cámara (el stick derecho) con el ratón. Desactivado, la cámara solo se mueve con las teclas del stick derecho.",  // MouseCameraDescription
+    "Sensibilidad",  // MouseSensitivityLabel
+    "La rapidez con que la cámara sigue al ratón. 100 % es el valor predeterminado.",  // MouseSensitivityDescription
+    "Teclas",  // KeysLabel
+    "Las teclas y los botones del ratón de cada entrada del mando, dos por entrada.",  // KeysDescription
+    "Asignar teclas…",  // MapKeysButton
+    "Asignar teclas",  // MapKeysTitle
+    "Controles › Teclado y ratón",  // MapKeysPath
+    "Botones",  // KeysButtonsHeading
+    "Stick izquierdo",  // LeftStickName
+    "Stick derecho",  // RightStickName
+    "Cruceta",  // DpadName
+    "+ ratón",  // KeysPlusMouse
+    "Arriba",  // DirectionUp
+    "Abajo",  // DirectionDown
+    "Izquierda",  // DirectionLeft
+    "Derecha",  // DirectionRight
+    "Haz clic y pulsa la nueva tecla (5 s). Clic derecho borra. Una tecla ya usada deja su entrada anterior.",  // KeysHint
+    "Pulsa… %d",  // KeyCapturePrompt
+    "Restaurar teclas predeterminadas",  // KeysRestoreDefaults
+    "Listo",  // KeysDone
+    "%s se quitó de %s.",  // KeyMovedStatus
+    "%s la usa el juego y no se puede asignar.",  // KeyReservedStatus
+    "Teclas predeterminadas restauradas.",  // KeysRestoredStatus
+    "Espacio",  // KeySpaceName
+    "Clic izq.",  // MouseLeftName
+    "Clic der.",  // MouseRightName
+    "Clic central",  // MouseMiddleName
 };
 
 }  // namespace localization_strings

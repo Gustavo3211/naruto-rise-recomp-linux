@@ -11,6 +11,8 @@ set(LAUNCHER_SOURCES
     src/content_manager.cpp
     src/folders.cpp
     src/graphics_devices.cpp
+    src/key_bindings.cpp
+    src/key_names.cpp
     src/localization.cpp
     src/texture_loader.cpp
     src/theme.cpp
@@ -18,6 +20,7 @@ set(LAUNCHER_SOURCES
     src/widgets.cpp
     src/pages/dlc.cpp
     src/pages/game_files.cpp
+    src/pages/key_mapping.cpp
     src/pages/play.cpp
     src/pages/settings.cpp
     src/pages/settings_form.cpp
@@ -96,11 +99,22 @@ add_dependencies(narutorise_launcher narutorise_launcher_assets)
 # Configuration regression tests can run without game files or the SDL UI.
 add_executable(narutorise_config_manager_test EXCLUDE_FROM_ALL
     tests/test_config_manager.cpp
-    src/config_manager.cpp)
+    src/config_manager.cpp
+    src/key_bindings.cpp)
 target_include_directories(narutorise_config_manager_test PRIVATE
     src
     ${REXSDK_INSTALL_DIR}/include)
 set_target_properties(narutorise_config_manager_test PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}")
+
+# The key names the launcher writes against the SDK's, and the value format.
+add_executable(narutorise_key_bindings_test EXCLUDE_FROM_ALL
+    tests/test_key_bindings.cpp
+    src/key_bindings.cpp
+    src/key_names.cpp)
+target_include_directories(narutorise_key_bindings_test PRIVATE src)
+target_link_libraries(narutorise_key_bindings_test PRIVATE SDL3::SDL3-static)
+set_target_properties(narutorise_key_bindings_test PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}")
 
 add_executable(narutorise_localization_test EXCLUDE_FROM_ALL

@@ -14,6 +14,7 @@
 #include "config_manager.h"
 #include "game_paths.h"
 #include "localization.h"
+#include "pages/key_mapping.h"
 #include "texture_loader.h"
 #include "ui.h"
 #include "theme.h"
@@ -192,6 +193,8 @@ int main(int argc, char* argv[]) {
   while (running) {
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
+      // A key being mapped is the launcher's, not ImGui's.
+      if (launcher_ui::CaptureKeyEvent(event)) continue;
       ImGui_ImplSDL3_ProcessEvent(&event);
       if (event.type == SDL_EVENT_QUIT) {
         running = false;

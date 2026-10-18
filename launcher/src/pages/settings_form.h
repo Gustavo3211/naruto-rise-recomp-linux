@@ -41,14 +41,17 @@ class OptionList {
   // Each returns whether the user changed the value in this frame.
   bool Combo(const Option& option, int& index, std::span<const char* const> items);
   bool Checkbox(const Option& option, bool& value);
-  // A thin track filled up to a handle, with the value beside it.
-  bool Slider(const Option& option, int& value, int min, int max);
+  // A thin track filled up to a handle, with the value beside it, written
+  // with `format` ("%d%%" for a percentage).
+  bool Slider(const Option& option, int& value, int min, int max, const char* format = "%d");
   // The same track over a set of values in ascending order, the first at the
   // start and the last at the end: the handle sits on the one nearest to
   // `value` and snaps from one to the next.
   bool Slider(const Option& option, int& value, std::span<const int> stops);
   // A value that is shown, not edited.
   void Text(const Option& option, const char* text);
+  // A button across the control column; returns whether it was clicked.
+  bool Button(const Option& option, const char* text);
 
   // The row pointed at in this frame, else the remembered one when this group
   // drew it, else the group's first.
@@ -59,7 +62,8 @@ class OptionList {
   void EndRow(const Option& option);
   // The track of both sliders: `value` from min to max, or over `stops` when
   // there are any.
-  bool Track(const Option& option, int& value, int min, int max, std::span<const int> stops);
+  bool Track(const Option& option, int& value, int min, int max, std::span<const int> stops,
+             const char* format);
   void LabelColumn(const Option& option);
   // The "only in one renderer" tag of an unavailable option, beside the last item.
   void DrawTag(const Option& option, float x, bool right_aligned) const;

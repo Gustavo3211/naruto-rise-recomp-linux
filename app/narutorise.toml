@@ -24,7 +24,40 @@ log_level = "info"
 protect_zero = false
 
 input_backend = "sdl"
+# Keyboard and mouse as a controller, next to a connected one. While exploring,
+# the mouse turns the camera itself at mnk_sensitivity (1.0 = 100%, about one
+# turn every 2,100 pixels); elsewhere it stands in for the right stick.
 mnk_mode = false
+mnk_mouse = true
+mnk_sensitivity = 1.0
+# Keys of each controller input: alternatives separated by commas, with the
+# SDK's key names (LMB, RMB and MMB for the mouse buttons). Shift, Control and
+# Alt can be keys of their own. The launcher maps them under Controls.
+keybind_a = "Space"
+keybind_b = "E,Backspace"
+keybind_x = "LMB,J"
+keybind_y = "RMB,K"
+keybind_left_shoulder = "Q"
+keybind_right_shoulder = "R"
+keybind_left_trigger = "Control"
+keybind_right_trigger = "Shift"
+keybind_lstick_press = "C"
+keybind_rstick_press = "MMB,V"
+keybind_start = "Return,Escape"
+keybind_back = "Tab"
+keybind_lstick_up = "W"
+keybind_lstick_down = "S"
+keybind_lstick_left = "A"
+keybind_lstick_right = "D"
+keybind_rstick_up = "Up"
+keybind_rstick_down = "Down"
+keybind_rstick_left = "Left"
+keybind_rstick_right = "Right"
+keybind_dpad_up = "1,Numpad8"
+keybind_dpad_down = "2,Numpad2"
+keybind_dpad_left = "3,Numpad4"
+keybind_dpad_right = "4,Numpad6"
+keybind_guide = ""
 
 fullscreen = true
 vsync = true

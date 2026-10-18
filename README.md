@@ -78,7 +78,7 @@ See [Renderers and frame rate](docs/renderers.md) for how it works, its limits, 
 - A Direct3D 12-compatible GPU, for either renderer. The launcher uses Direct3D 11.
 - The [Microsoft Visual C++ x64 Redistributable](https://aka.ms/vs/17/release/vc_redist.x64.exe).
 - The files from your Xbox 360 copy of the game, including `default.xex`. The source tree does not include game data or DLC packages.
-- An SDL-compatible controller is recommended; mouse and keyboard mode is disabled by default.
+- An SDL-compatible controller is recommended. Keyboard and mouse can be turned on and mapped in the launcher; see [Keyboard and mouse](docs/configuration.md#keyboard-and-mouse).
 
 ## Installing
 
@@ -133,7 +133,6 @@ Planned work, in no particular order:
 - **Linux support.** Build presets exist, but the port has not been validated on Linux, and the launcher, preparation scripts, and installer still depend on Windows.
 - **Vulkan.** Both renderers currently require Direct3D 12.
 - **Ultrawide with the native renderer.** It currently draws at 16:9, with bars on wider monitors.
-- **Mouse and keyboard.** A mode exists but is disabled by default: the camera cannot be moved from the keyboard, and keys cannot be remapped.
 - **Graphics settings in game.** An overlay to change the graphics options while playing, kept in sync with the launcher. Today they are changed in the launcher.
 
 ## Contributing

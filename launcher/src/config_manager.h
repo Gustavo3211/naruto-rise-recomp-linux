@@ -4,6 +4,8 @@
 #include <filesystem>
 #include <string>
 
+#include "key_bindings.h"
+
 // The game executable next to the launcher carries the native renderer next to
 // the Xenos plugin (NARUTORISE_NATIVE_RENDERER_BOOTSTRAP builds).
 #ifdef NARUTORISE_LAUNCHER_NATIVE_RENDERER
@@ -31,7 +33,13 @@ struct GameConfig {
   bool protect_zero = false;
 
   std::string input_backend = "sdl";
+  // Keyboard and mouse mode, next to the controller: the mouse moves the
+  // camera (the right stick) at mnk_sensitivity (1.0 = 100%), and each
+  // controller input has its keys.
   bool mnk_mode = false;
+  bool mnk_mouse = true;
+  double mnk_sensitivity = 1.0;
+  KeyBinds key_binds = DefaultKeyBinds();
 
   bool fullscreen = true;
   bool vsync = true;

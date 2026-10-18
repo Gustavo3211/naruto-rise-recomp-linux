@@ -70,21 +70,25 @@ bool OptionList::Checkbox(const Option& option, bool& value) {
   return changed;
 }
 
-bool OptionList::Slider(const Option& option, int& value, int min, int max) {
-  return Track(option, value, min, max, {});
+bool OptionList::Slider(const Option& option, int& value, int min, int max, const char* format) {
+  return Track(option, value, min, max, {}, format);
 }
 
 bool OptionList::Slider(const Option& option, int& value, std::span<const int> stops) {
-  return !stops.empty() && Track(option, value, 0, 0, stops);
+  return !stops.empty() && Track(option, value, 0, 0, stops, "%d");
 }
 
-bool OptionList::Track(const Option& option, int& value, int min, int max, std::span<const int> stops) {
+bool OptionList::Track(const Option& option, int& value, int min, int max, std::span<const int> stops,
+                       const char* format) {
   if (!BeginRow(option)) return false;
   LabelColumn(option);
   // The value (or the tag, when the renderer does not use the option) takes a
-  // column on the right; the track takes the rest.
+  // column on the right, as wide as the widest value; the track takes the rest.
   const bool used = UsedBy(option, native_);
-  const float side = (used ? ImGui::CalcTextSize("000").x : TagSize(TagText(option)).x) + 12;
+  char widest[16];
+  std::snprintf(widest, sizeof(widest), format, stops.empty() ? max : stops.back());
+  const float value_width = std::max(ImGui::CalcTextSize("000").x, ImGui::CalcTextSize(widest).x);
+  const float side = (used ? value_width : TagSize(TagText(option)).x) + 12;
   ImGui::SetNextItemWidth(row_start_.x + row_width_ - ImGui::GetCursorScreenPos().x - side);
 
   // With stops, ImGui's slider runs over a fine range, so its grab is narrow and
@@ -141,7 +145,7 @@ bool OptionList::Track(const Option& option, int& value, int min, int max, std::
   draw->AddRectFilled(ImVec2(x - 6, y - 10), ImVec2(x + 6, y + 10), ImGui::GetColorU32(ImGuiCol_Text), 4);
   if (used) {
     char text[16];
-    std::snprintf(text, sizeof(text), "%d", shown);
+    std::snprintf(text, sizeof(text), format, shown);
     draw->AddText(ImVec2(item_max.x + 12, y - ImGui::GetFontSize() / 2), ImGui::GetColorU32(ImGuiCol_TextDisabled), text);
   } else {
     DrawTag(option, item_max.x + 12, false);
@@ -156,6 +160,14 @@ void OptionList::Text(const Option& option, const char* text) {
   ImGui::AlignTextToFramePadding();
   ImGui::TextDisabled("%s", text);
   EndRow(option);
+}
+
+bool OptionList::Button(const Option& option, const char* text) {
+  if (!BeginRow(option)) return false;
+  LabelColumn(option);
+  const bool clicked = ImGui::Button(text, ImVec2(row_width_ - label_width_, 0));
+  EndRow(option);
+  return clicked;
 }
 
 const Option* OptionList::Described() const {

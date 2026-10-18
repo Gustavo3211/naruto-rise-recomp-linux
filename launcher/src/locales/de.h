@@ -174,6 +174,37 @@ inline constexpr const char* kDe[] = {
     "Überspringt die Logos beim Spielstart. Das Eröffnungsvideo bleibt erhalten.",  // SkipIntroDescription
     "Liest Controller über SDL, das Xbox-, PlayStation- und andere Controller erkennt. Ausgeschaltet nutzt das Spiel XInput, das nur Xbox-kompatible Controller erkennt.",  // SdlInputDescription
     "Der gerade verbundene Controller, wie SDL ihn nennt.",  // ControllerDescription
+    "Tastatur und Maus verwenden",  // KeyboardMouseLabel
+    "Tastatur und Maus ersetzen einen Xbox-Controller und funktionieren zusammen mit einem angeschlossenen Controller. Steuert die Maus die Kamera, bleibt der Mauszeiger im Spielfenster, solange es aktiv ist; Alt+Tab gibt ihn frei. Das Spiel zeigt weiterhin die Controller-Tasten an.",  // KeyboardMouseDescription
+    "Maus steuert die Kamera",  // MouseCameraLabel
+    "Bewegt die Kamera (den rechten Stick) mit der Maus. Aus: Die Kamera bewegt sich nur mit den Tasten des rechten Sticks.",  // MouseCameraDescription
+    "Empfindlichkeit",  // MouseSensitivityLabel
+    "Wie schnell die Kamera der Maus folgt. 100 % ist der Standard.",  // MouseSensitivityDescription
+    "Tasten",  // KeysLabel
+    "Die Tasten und Maustasten für jede Controller-Eingabe, zwei pro Eingabe.",  // KeysDescription
+    "Tasten belegen…",  // MapKeysButton
+    "Tasten belegen",  // MapKeysTitle
+    "Steuerung › Tastatur und Maus",  // MapKeysPath
+    "Knöpfe",  // KeysButtonsHeading
+    "Linker Stick",  // LeftStickName
+    "Rechter Stick",  // RightStickName
+    "Steuerkreuz",  // DpadName
+    "+ Maus",  // KeysPlusMouse
+    "Oben",  // DirectionUp
+    "Unten",  // DirectionDown
+    "Links",  // DirectionLeft
+    "Rechts",  // DirectionRight
+    "Klicken und die neue Taste drücken (5 s). Rechtsklick löscht. Eine bereits belegte Taste verlässt ihre bisherige Eingabe.",  // KeysHint
+    "Taste… %d",  // KeyCapturePrompt
+    "Standardtasten wiederherstellen",  // KeysRestoreDefaults
+    "Fertig",  // KeysDone
+    "%s wurde von %s entfernt.",  // KeyMovedStatus
+    "%s wird vom Spiel verwendet und kann nicht belegt werden.",  // KeyReservedStatus
+    "Standardtasten wiederhergestellt.",  // KeysRestoredStatus
+    "Leertaste",  // KeySpaceName
+    "Linke Maus",  // MouseLeftName
+    "Rechte Maus",  // MouseRightName
+    "Mittlere Maus",  // MouseMiddleName
 };
 
 }  // namespace localization_strings
