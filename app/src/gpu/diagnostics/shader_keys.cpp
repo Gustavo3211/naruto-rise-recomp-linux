@@ -11,6 +11,7 @@
 #include "gpu/diagnostics/shader_keys.h"
 #include "gpu/diagnostics/diagnostics.h"
 #include "gpu/common/guest_memory.h"
+#include "gpu/common/hash.h"
 #include "gpu/shaders/shaders.h"
 #include <algorithm>
 #include <array>
@@ -90,14 +91,6 @@ void Note(bool vertex, const Lookup& l) {
   last_vs_valid = false;
 }
 uint64_t Get64(uint8_t* base, uint32_t a) { return uint64_t(Get32(base, a)) << 32 | Get32(base, a + 4); }
-uint64_t fnvMix(uint64_t h, const void* data, size_t size) {
-  const auto* bytes = static_cast<const uint8_t*>(data);
-  for (size_t i = 0; i < size; ++i) {
-    h ^= bytes[i];
-    h *= 0x100000001B3ull;
-  }
-  return h;
-}
 std::vector<uint8_t> GuestBytes(uint8_t* base, uint32_t address, uint32_t size) {
   std::vector<uint8_t> out;
   if (!address || address < 0x1000 || size_t(address) + size > 0xFFFFFFFFull) return out;
@@ -139,10 +132,10 @@ void NoteMaterial(PPCContext& ctx, uint8_t* base, uint32_t category, uint32_t lr
     m.block = GuestBytes(base, block, kBlockBytes);
     m.texset = GuestBytes(base, Get32(base, block + 12), kTexsetBytes);
   }
-  uint64_t hash = fnvMix(0xCBF29CE484222325ull, &category, 4);
-  hash = fnvMix(hash, m.material.data(), m.material.size());
-  hash = fnvMix(hash, m.block.data(), m.block.size());
-  hash = fnvMix(hash, m.texset.data(), m.texset.size());
+  uint64_t hash = Fnv64(reinterpret_cast<const uint8_t*>(&category), 4, 0xCBF29CE484222325ull);
+  hash = Fnv64(reinterpret_cast<const uint8_t*>(m.material.data()), m.material.size(), hash);
+  hash = Fnv64(reinterpret_cast<const uint8_t*>(m.block.data()), m.block.size(), hash);
+  hash = Fnv64(reinterpret_cast<const uint8_t*>(m.texset.data()), m.texset.size(), hash);
   const bool with_keys = capture_vs_valid || last_ps_valid;
   const uint64_t vs = capture_vs_valid ? capture_vs.key : 0, ps = last_ps_valid ? last_ps.key : 0;
   capture_vs_valid = last_ps_valid = false;  // Each constructor call takes its own lookups.
@@ -155,7 +148,6 @@ void NoteMaterial(PPCContext& ctx, uint8_t* base, uint32_t category, uint32_t lr
   ++it->second.count;
   if (with_keys) ++it->second.keys[{vs, ps}];
 }
-}  // namespace
 
 // Before the lookup: the caller and the key object (r4); after it: the
 // wrapper it returns (r3), whose +4 is the D3D shader object.
@@ -163,6 +155,7 @@ void NoteShaderKey(uint8_t* base, bool vertex, uint32_t lr, uint32_t key_object,
   if (!key_object) return;
   Note(vertex, {lr, Get32(base, key_object), wrapper ? Get32(base, wrapper + 4) : 0, Get64(base, key_object + 8)});
 }
+}  // namespace
 
 std::string RecordShaderKeys() {
   if (!Diagnostics()) return {};

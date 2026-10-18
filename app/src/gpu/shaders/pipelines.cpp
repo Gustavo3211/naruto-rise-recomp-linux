@@ -110,15 +110,17 @@ void PrecompileNote(std::atomic<uint64_t>& counter, std::string failure) {
 }
 
 // The description of one entry of the list, on any thread: its shaders by
-// name, the key checked against the engine's. False, after noting why, for an
-// entry the cache cannot resolve or whose key does not match. linked: the spec
-// constants of the pixel shader taken; variant: the draw asks for another
-// variant than the list holds (its key replaced the entry's).
-bool DescribeEntry(size_t i, PipelineDesc& desc, uint32_t& linked, bool& variant) {
+// name, the key checked against the engine's. False for an entry the cache
+// cannot resolve or whose key does not match; note: the pool's counters and
+// first failure take it (the pool only: the world prefetch counts its own).
+// linked: the spec constants of the pixel shader taken; variant: the draw asks
+// for another variant than the list holds (its key replaced the entry's).
+bool DescribeEntry(size_t i, PipelineDesc& desc, uint32_t& linked, bool& variant, bool note) {
   const PipelineCacheEntry& entry = kPipelineCache[i];
   auto unresolved = [&](const char* why) {
-    PrecompileNote(pipeline_precompile.unresolved, fmt::format("{{\"reason\":\"{}\",\"vs\":\"{}\",\"ps\":\"{}\"}}",
-                                                               why, entry.vs, entry.ps));
+    if (note)
+      PrecompileNote(pipeline_precompile.unresolved, fmt::format("{{\"reason\":\"{}\",\"vs\":\"{}\",\"ps\":\"{}\"}}",
+                                                                 why, entry.vs, entry.ps));
     return false;
   };
   auto vs = shader_cache.by_name.find(entry.vs);
@@ -156,8 +158,9 @@ bool DescribeEntry(size_t i, PipelineDesc& desc, uint32_t& linked, bool& variant
   desc.layout_id = entry.layout;
   desc.state = entry.state;
   if (Engine::PipelineKey(desc.vs_key, desc.ps_key, desc.layout_id, desc.state) != entry.key) {
-    PrecompileNote(pipeline_precompile.mismatched, fmt::format("{{\"reason\":\"key\",\"key\":\"{:016x}\"}}",
-                                                               entry.key));
+    if (note)
+      PrecompileNote(pipeline_precompile.mismatched, fmt::format("{{\"reason\":\"key\",\"key\":\"{:016x}\"}}",
+                                                                 entry.key));
     return false;
   }
   // As the draw: the variant's key; alpha to coverage turns state word 11 on,
@@ -176,7 +179,7 @@ void PrecompileEntry(size_t i, Engine& engine) {
   PipelineDesc desc;
   uint32_t linked = 0;
   bool variant = false;
-  if (!DescribeEntry(i, desc, linked, variant)) return;
+  if (!DescribeEntry(i, desc, linked, variant, true)) return;
   bool present = false;
   std::string evidence;
   if (!engine.PrecompilePipeline(desc, present, evidence))
@@ -263,8 +266,9 @@ WorldPrefetch PrefetchWorldPipelines(uint32_t world_key) {
   auto& p = pipeline_precompile;
   if (!worldPrefetchOption() || !p.pool_started.load(std::memory_order_acquire)) return out;
   const PipelineCacheWorld* world = nullptr;
-  for (const auto& w : kPipelineWorlds)
-    if (w.key == world_key) { world = &w; break; }
+  if (world_key)  // The sentinel of key 0 is not a world.
+    for (const auto& w : kPipelineWorlds)
+      if (w.key == world_key) { world = &w; break; }
   if (!world) return out;
   out.listed = world->count;
   std::vector<PipelineDesc> descs;
@@ -273,7 +277,7 @@ WorldPrefetch PrefetchWorldPipelines(uint32_t world_key) {
     PipelineDesc desc;
     uint32_t linked = 0;
     bool variant = false;
-    if (DescribeEntry(kPipelineWorldEntries[e], desc, linked, variant)) descs.push_back(std::move(desc));
+    if (DescribeEntry(kPipelineWorldEntries[e], desc, linked, variant, false)) descs.push_back(std::move(desc));
     else ++out.unresolved;
   }
   auto* dispatcher = host::ActiveDispatcher();

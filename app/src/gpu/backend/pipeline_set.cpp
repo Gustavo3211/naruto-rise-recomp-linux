@@ -7,6 +7,7 @@
 #include <cstdlib>
 #include <string_view>
 #include <fmt/format.h>
+#include "gpu/common/hash.h"
 #include "gpu/common/title_loading.h"
 #include "gpu/diagnostics/profile.h"
 
@@ -21,14 +22,6 @@ bool warmSyncOption() {
   }();
   return value;
 }
-uint64_t fnvMix(uint64_t h, const void* data, size_t size) {
-  const auto* bytes = static_cast<const uint8_t*>(data);
-  for (size_t i = 0; i < size; ++i) {
-    h ^= bytes[i];
-    h *= 0x100000001B3ull;
-  }
-  return h;
-}
 void StoreMax(std::atomic<uint64_t>& max, uint64_t value) {
   uint64_t seen = max.load(std::memory_order_relaxed);
   while (seen < value && !max.compare_exchange_weak(seen, value, std::memory_order_relaxed)) {}
@@ -40,10 +33,10 @@ uint64_t ElapsedUs(std::chrono::steady_clock::time_point since) {
 
 uint64_t TripleKey(const std::string& vs_key, const std::string& ps_key, uint64_t layout_id) {
   uint64_t key = 0xCBF29CE484222325ull;
-  key = fnvMix(key, vs_key.data(), vs_key.size());
-  key = fnvMix(key, "|", 1);
-  key = fnvMix(key, ps_key.data(), ps_key.size());
-  return fnvMix(key, &layout_id, sizeof(layout_id));
+  key = Fnv64(reinterpret_cast<const uint8_t*>(vs_key.data()), vs_key.size(), key);
+  key = Fnv64(reinterpret_cast<const uint8_t*>("|"), 1, key);
+  key = Fnv64(reinterpret_cast<const uint8_t*>(ps_key.data()), ps_key.size(), key);
+  return Fnv64(reinterpret_cast<const uint8_t*>(&layout_id), sizeof(layout_id), key);
 }
 
 PipelineSet::PipelineSet() : warm_sync_(warmSyncOption()) {}
@@ -172,12 +165,11 @@ PipelineSet::Taken PipelineSet::TakeSync(uint64_t key, uint64_t triple, bool pre
     StoreMax(wait_us_max_, take.wait_us);
     profile::Max(profile::kPipelineWaitUsMax, take.wait_us);
     profile::Count(profile::kPipelinesWaited, 1);
-  } else {
-    profile::Count(profile::kPipelinesAdopted, 1);
   }
   if (entry.phase == Phase::Ready) {
     take.pipeline = std::move(entry.pipeline);
     adopted_.fetch_add(1, std::memory_order_relaxed);
+    if (take.wait_us == 0) profile::Count(profile::kPipelinesAdopted, 1);
   } else {
     take.origin = nullptr;  // Failed: the draw creates it.
   }
@@ -227,7 +219,9 @@ const char* PipelineSet::NoteCreated(const Taken& take, uint64_t triple, uint32_
     profile::Count(profile::kPipelinesCreated, 1);
     return "created";
   }
-  // The skip take's budget and estimate (owner); a slow driver turns its warm creation off.
+  // The skip take's budget and estimate (owner); a slow driver turns its warm
+  // creation off. The prefetch take comes here too (its warm creations are the
+  // same kind); nothing reads the budget in that policy.
   warm_spent_us_ += create_us;
   warm_estimate_us_ = (3 * warm_estimate_us_ + create_us) / 4;
   if (create_us > kWarmSlowUs) warm_sync_ = false;

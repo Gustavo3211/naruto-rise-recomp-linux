@@ -76,7 +76,8 @@ class Dispatcher final {
                  std::function<void(bool)> done);
   // Runs operation(engine) on the calling thread, for the engine's
   // free-threaded operations only (PostPipeline, PrecompilePipeline); the
-  // engine stays until it returns. False when the dispatcher is not running.
+  // engine stays until it returns. False, without waiting, when the dispatcher
+  // is not running or is shutting down.
   bool WithEngine(const std::function<void(Engine&)>& operation);
   // The translation stage. Deferred: the stage exists (fixed per session).
   bool Deferred() const;

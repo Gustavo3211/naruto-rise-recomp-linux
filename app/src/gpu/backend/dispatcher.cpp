@@ -474,9 +474,16 @@ bool Dispatcher::StartPool(size_t count, unsigned threads,
       // threads, and the frames of the first seconds of a world paid for it).
       int priority = 0;
       const bool in_game_thread = t < kPoolThreadsInGame;
-      for (size_t i = 0; !state_->pool_stop.load() && (i = state_->pool_next.fetch_add(1)) < count;) {
+      for (;;) {
+        // The wait comes before the claim: an entry claimed by a sleeping
+        // thread would be nobody's (a draw would create it, the pool's done
+        // callback would wait for the next loading screen) and the stop
+        // would compile it before the join.
         while (!TitleLoading() && !in_game_thread && !state_->pool_stop.load())
           std::this_thread::sleep_for(std::chrono::milliseconds(50));
+        if (state_->pool_stop.load()) break;
+        const size_t i = state_->pool_next.fetch_add(1);
+        if (i >= count) break;
         const int wanted = TitleLoading() ? THREAD_PRIORITY_HIGHEST : THREAD_PRIORITY_LOWEST;
         if (wanted != priority) SetThreadPriority(GetCurrentThread(), priority = wanted);
         (*shared_work)(i, *engine);
@@ -487,7 +494,11 @@ bool Dispatcher::StartPool(size_t count, unsigned threads,
 }
 
 bool Dispatcher::WithEngine(const std::function<void(Engine&)>& operation) {
-  std::lock_guard lifecycle(state_->lifecycle);  // The engine stays until the operation returns.
+  // The engine stays until the operation returns. A Shutdown in progress holds
+  // the lifecycle for its whole duration: the operation is optional, so the
+  // caller (the title thread) is not made to wait for it.
+  std::unique_lock lifecycle(state_->lifecycle, std::try_to_lock);
+  if (!lifecycle.owns_lock()) return false;
   {
     std::lock_guard lock(state_->mutex);
     if (!state_->dedicated || !state_->initialized || state_->closing || state_->stopped || !state_->engine)

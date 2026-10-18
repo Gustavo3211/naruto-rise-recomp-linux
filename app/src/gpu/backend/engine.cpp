@@ -1,5 +1,6 @@
 #include "gpu/backend/engine.h"
 #include "gpu/backend/pipeline_set.h"
+#include "gpu/common/hash.h"
 #include "gpu/common/title_loading.h"
 #include "gpu/d3d/init/initializer_services.h"
 
@@ -2396,11 +2397,6 @@ D3D12_BLEND_OP xenosBlendOp(uint32_t f, bool& ok) {
     default: ok = false; return D3D12_BLEND_OP_ADD;
   }
 }
-uint64_t fnvMix(uint64_t h, const void* data, size_t size) {
-  const auto* p = static_cast<const uint8_t*>(data);
-  for (size_t i = 0; i < size; ++i) h = (h ^ p[i]) * 0x100000001B3ull;
-  return h;
-}
 constexpr UINT kDrawViews = 4096, kDrawSamplers = 2048;
 constexpr size_t kDrawStreamsMax = 8;  // Vertex buffer slots of one draw (the title binds up to 4).
 constexpr D3D12_RESOURCE_STATES kShaderResource =
@@ -2410,9 +2406,9 @@ constexpr D3D12_RESOURCE_STATES kShaderResource =
 uint64_t ElementsId(const std::vector<VertexElement>& elements) {
   uint64_t id = 0xCBF29CE484222325ull;
   for (const auto& e : elements) {
-    id = fnvMix(id, e.semantic, std::strlen(e.semantic));
+    id = Fnv64(reinterpret_cast<const uint8_t*>(e.semantic), std::strlen(e.semantic), id);
     const uint32_t fields[4] = {e.semantic_index, e.format, e.slot, e.offset};
-    id = fnvMix(id, fields, sizeof(fields));
+    id = Fnv64(reinterpret_cast<const uint8_t*>(fields), sizeof(fields), id);
   }
   return id;
 }
@@ -2864,7 +2860,7 @@ bool Engine::DrawIndexed(const DrawRequest& r, uint64_t& fenceValue, std::string
     sampler.MinLOD = t.min_lod;
     sampler.MaxLOD = t.max_lod;
     for (unsigned i = 0; i < 4; ++i) sampler.BorderColor[i] = t.border_color[i];
-    const uint64_t sampler_key = fnvMix(0xCBF29CE484222325ull, &sampler, sizeof(sampler));
+    const uint64_t sampler_key = Fnv64(reinterpret_cast<const uint8_t*>(&sampler), sizeof(sampler), 0xCBF29CE484222325ull);
     auto [slot_it, inserted] = state_->sampler_slots.try_emplace(sampler_key, uint32_t(state_->sampler_slots.size() + 1));
     if (inserted) {
       if (slot_it->second >= kDrawSamplers) { state_->sampler_slots.erase(slot_it); return fail("native-draw-samplers-exhausted"); }
@@ -3093,11 +3089,11 @@ std::string Engine::PipelineList() {
 uint64_t Engine::PipelineKey(const std::string& vs_key, const std::string& ps_key, uint64_t layout_id,
                                            const std::array<uint32_t, 21>& state) {
   uint64_t key = 0xCBF29CE484222325ull;
-  key = fnvMix(key, vs_key.data(), vs_key.size());
-  key = fnvMix(key, "|", 1);
-  key = fnvMix(key, ps_key.data(), ps_key.size());
-  key = fnvMix(key, &layout_id, sizeof(layout_id));
-  return fnvMix(key, state.data(), sizeof(uint32_t) * state.size());
+  key = Fnv64(reinterpret_cast<const uint8_t*>(vs_key.data()), vs_key.size(), key);
+  key = Fnv64(reinterpret_cast<const uint8_t*>("|"), 1, key);
+  key = Fnv64(reinterpret_cast<const uint8_t*>(ps_key.data()), ps_key.size(), key);
+  key = Fnv64(reinterpret_cast<const uint8_t*>(&layout_id), sizeof(layout_id), key);
+  return Fnv64(reinterpret_cast<const uint8_t*>(state.data()), sizeof(uint32_t) * state.size(), key);
 }
 
 std::vector<PipelineDesc> Engine::PipelineDescs() {
