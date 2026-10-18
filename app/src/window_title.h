@@ -1,0 +1,13 @@
+// narutorise - ReXGlue Recompiled Project
+//
+// The title of the game window (window_title.cpp): the game's name and the
+// version of this copy, in place of the SDK's name and build stamp.
+
+#pragma once
+
+#include <string>
+
+namespace narutorise {
+// "Naruto: Rise of a Ninja - <version>", or the name alone when the version is not known.
+std::string WindowTitle();
+}  // namespace narutorise

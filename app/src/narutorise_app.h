@@ -28,6 +28,7 @@
 #include "graphics_device.h"
 #include "input_replay.h"
 #include "ultrawide.h"
+#include "window_title.h"
 #ifdef NARUTORISE_NATIVE_RENDERER_BOOTSTRAP
 #include "gpu/host/app.h"
 #endif
@@ -292,6 +293,8 @@ class NarutoriseApp : public rex::ReXApp {
 
   void OnPostSetup() override {
     narutorise::crash_report::Install();  // After the SDK's exception handler.
+    // The game's name and version in place of the SDK's name and build stamp.
+    if (window()) window()->SetTitle(narutorise::WindowTitle());
     RestoreXenosAdapter();  // The provider exists by now.
     SeedShaderStorage();
     AutoInstallDlc();

@@ -28,7 +28,7 @@ The ReXGlue SDK's emulation of the Xbox 360 GPU, derived from Xenia. It executes
 | Aspect ratio | 16:9, 21:9, 32:9 | 16:9, with bars on wider monitors |
 | Resolution | 1× to 4× | 1×, 1.5×, 2× to 4× |
 | Anti-aliasing | FXAA, CAS/FSR | The game's 4× MSAA or 2×/8×, transparency antialiasing, FXAA, CAS/FSR |
-| Frame rate display | `F1` overlay | Window title |
+| Frame rate display | `F1` overlay | Window title, with `REX_NATIVE_FPS_TITLE=1` |
 
 ## Choosing the renderer
 
@@ -69,7 +69,7 @@ Game speed, physics, and timing stay those of the console, because the logic its
 ### Measuring the frame rate
 
 - **Xenos:** `F1` shows the **guest** rate, the game's own frame production that game speed follows, and the **host** rate, the window present rate.
-- **Native:** the window title shows the rate and the frame time of the last half second, for example `| 60.0 fps | 16.7 ms (max 18.1)`. It is visible in windowed mode. Set the environment variable `REX_NATIVE_FPS_TITLE=0` to hide it.
+- **Native:** with the environment variable `REX_NATIVE_FPS_TITLE=1` (set for your Windows user, so the launcher passes it on), the window title adds the rate and the frame time of the last half second to the game's name and version, for example `| 60.0 fps | 16.7 ms (max 18.1)`. It is visible in windowed mode. By default the title shows only the name and version.
 
 ## Known issues
 
@@ -82,9 +82,9 @@ These apply to the native renderer. Report anything else through the [issue trac
 | Light glows | The game uses occlusion queries only for light glows, and the native renderer answers them with a fixed value: a glow behind a wall stays visible, and large or close glows look dimmer than with Xenos. |
 | Minimap at 30 FPS | See [Limits](#limits). |
 | No ultrawide | The image stays 16:9, with bars on wider monitors. |
-| No `F1`/`F3` overlays | Use the window title to read the frame rate. |
+| No `F1`/`F3` overlays | Set `REX_NATIVE_FPS_TITLE=1` to read the frame rate in the window title. |
 | Crash in a long session | A crash after about 16 minutes of play has been reported once with an earlier test build; the cause is under investigation. |
 
 ## Reporting problems
 
-Include the renderer, the frame rate, VSync, MSAA, internal resolution, the graphics card and driver, and the log from `logs/` next to the executable. For speed or smoothness problems, include the frame rate shown by `F1` (Xenos) or in the window title (native). If a problem appears only with the native renderer, check whether it also happens with `frame_rate = 30`.
+Include the renderer, the frame rate, VSync, MSAA, internal resolution, the graphics card and driver, and the log from `logs/` next to the executable. For speed or smoothness problems, include the frame rate shown by `F1` (Xenos) or in the window title with `REX_NATIVE_FPS_TITLE=1` (native). If a problem appears only with the native renderer, check whether it also happens with `frame_rate = 30`.

@@ -151,7 +151,7 @@ The executable also exports `NvOptimusEnablement` and `AmdPowerXpressRequestHigh
 
 The FPS overlay (`F1`) shows two rates: **Guest** — the game's own frame rate, measured on every guest swap, which is what game speed follows — and **Host** — the window present rate, which can be much higher on high-refresh displays. Slow motion with a high host rate means the guest rate is below the game's target.
 
-The native renderer has no overlays; it writes the frame rate and frame time in the window title instead, visible in windowed mode. Set the environment variable `REX_NATIVE_FPS_TITLE=0` to hide it.
+The window title shows the game's name and version. The native renderer has no overlays; with the environment variable `REX_NATIVE_FPS_TITLE=1` (set for your Windows user, so the launcher passes it on), it adds the frame rate and frame time to the window title, visible in windowed mode.
 
 ## Folders and user data
 

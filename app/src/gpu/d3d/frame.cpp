@@ -141,8 +141,9 @@ std::string LimiterSummary() {
 // consecutive own Swaps (after the limiter, the QPC of SwapLimiter), written
 // twice per second as "<title> | 30.0 fps | 33.3 ms (max 36.1)". Fire and
 // forget on the UI thread (CallInUIThreadDeferred, values captured by value);
-// the title is read there once. REX_NATIVE_FPS_TITLE=0 turns it off. Render
-// thread only; the image is untouched.
+// the title is read there once. Off by default, so the title keeps only the
+// game's name and version; REX_NATIVE_FPS_TITLE=1 turns it on. Render thread
+// only; the image is untouched.
 struct FrameMeter {
   int64_t last = 0, window_start = 0, sum = 0, max = 0;
   uint32_t frames = 0;
@@ -152,7 +153,7 @@ void MeterSwap() {
   auto& m = frame_meter;
   if (m.enabled < 0) {
     const char* text = std::getenv("REX_NATIVE_FPS_TITLE");
-    m.enabled = text && std::string_view(text) == "0" ? 0 : 1;
+    m.enabled = text && std::string_view(text) == "1" ? 1 : 0;
   }
   const int64_t f = swap_limiter.frequency;
   if (!m.enabled || !f) return;

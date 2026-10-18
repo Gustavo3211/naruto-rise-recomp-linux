@@ -50,7 +50,7 @@ Check `execute_unclipped_draw_vs_on_cpu = true`, `d3d12_readback_resolve = true`
 | --- | --- |
 | The launcher has no **Renderer** option | The build does not include the native renderer; see [Build and run](build-and-run.md#native-renderer-optional) |
 | Bars on an ultrawide monitor | Expected: the native renderer stays at 16:9; select Xenos under **Settings → Display → Renderer** for 21:9 or 32:9 |
-| `F1` shows nothing | The overlays belong to Xenos; the native renderer shows the frame rate in the window title |
+| `F1` shows nothing | The overlays belong to Xenos; the native renderer shows the frame rate in the window title with the environment variable `REX_NATIVE_FPS_TITLE=1` |
 | The frame rate stays at 30 in the open world or 60 in fights | Check the **Frame rate** slider; with VSync on, the rate does not exceed the monitor's refresh rate. Rates just above the game's step follow the step, see [Frame rate](renderers.md#frames-between-the-logic-steps) |
 | The rate varies at 120 FPS | Busy areas may not reach 120; choose 60 |
 | An object or effect is missing for a moment | Its pipeline is compiling the first time it appears |
@@ -78,7 +78,7 @@ When reporting a problem, include:
 
 - build/commit, Windows version, CPU, GPU, and driver version;
 - the renderer (Xenos or native) and, with the native renderer, the frame rate;
-- guest and host FPS from the `F1` overlay (the guest rate drives game speed; the host rate is context), or the rate in the window title with the native renderer;
+- guest and host FPS from the `F1` overlay (the guest rate drives game speed; the host rate is context), or the rate in the window title with the native renderer and `REX_NATIVE_FPS_TITLE=1`;
 - reproduction steps and expected result;
 - game revision and DLC or Title Update usage;
 - resolution, aspect ratio, and internal scale;

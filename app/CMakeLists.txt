@@ -22,6 +22,7 @@ set(NARUTORISE_SOURCES
     src/input_replay.cpp
     src/graphics_device.cpp
     src/crash_report.cpp
+    src/window_title.cpp
 )
 
 # The native renderer (opt-in): its own D3D boundary and engine, chosen at
@@ -82,6 +83,15 @@ if(NARUTORISE_NATIVE_RENDERER_BOOTSTRAP)
     narutorise_shader_cache(narutorise src/gpu/shaders/shader_cache_data.cpp)
 else()
     rexglue_setup_target(narutorise GPU_PLUGINS xenos)
+endif()
+
+# The release version, in the window title when the copy has no
+# narutorise.version file (development builds), as in the launcher. The
+# launcher's directory already makes version.iss a configure dependency.
+set(NARUTORISE_GAME_VERSION_FILE ${CMAKE_CURRENT_SOURCE_DIR}/../packaging/version.iss)
+file(STRINGS ${NARUTORISE_GAME_VERSION_FILE} NARUTORISE_GAME_VERSION_LINE REGEX "#define MyAppVersion")
+if(NARUTORISE_GAME_VERSION_LINE MATCHES "\"([^\"]+)\"")
+    target_compile_definitions(narutorise PRIVATE NARUTORISE_VERSION="${CMAKE_MATCH_1}")
 endif()
 
 # Runtime config: narutorise.toml ao lado do exe. Um target ALL separado
