@@ -176,7 +176,7 @@ try {
     Set-Content (Join-Path $LicenseDir 'README.txt') -Encoding UTF8 -Value @"
 THIRD-PARTY NOTICES - NARUTO: RISE OF A NINJA PC PORT ($Version)
 
-This port's own code is licensed under the MIT License: naruto-rise-recomp.txt.
+This port's own code is licensed under GPL-3.0-only: naruto-rise-recomp.txt.
 It includes the components below, each under its own license; the license texts
 are in this folder. Naruto: Rise of a Ninja, its content, artwork and trademarks
 belong to their respective owners and are not covered by these licenses. Game

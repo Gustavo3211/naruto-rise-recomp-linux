@@ -162,7 +162,7 @@ Keep game files, content packages, derived shader data, and generated recompiled
 
 ## License
 
-The source code of this port is licensed under the [MIT License](LICENSE).
+Copyright (C) 2026 Jorge Barbosa. The source code of this port is licensed under version 3 of the [GNU General Public License](LICENSE) (GPL-3.0-only). The v0.2.0-beta.1 release was published under the MIT License.
 
 Third-party code keeps its own license: the ReXGlue SDK (`sdk/`, BSD-3-Clause) and its dependencies, the XenosRecomp fork (`tools/xenosrecomp/`, MIT), Plume and D3D12 Memory Allocator (MIT, built into the executable with the native renderer), extract-xiso (`tools/extract-xiso/`), and the Lato fonts (`launcher/assets/fonts/`, OFL-1.1). Release packages include the notices of every component they ship in `licenses/` ([component list](packaging/third-party-licenses.psd1)).
 
