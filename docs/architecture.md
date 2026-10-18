@@ -84,6 +84,7 @@ The shader cache is generated at build time from the local `xeshader.sdb` by `to
 | `codegen-alt-version-dll-modules.patch` | Code generation for alternative module versions, required by the DLC workflow |
 | `d3d12-queue-fence-result-check.patch` | Checks the results of the fence signal and wait separately in the D3D12 command processor's submission wait |
 | `guest-frame-stats.patch` | Enables the guest frame rate measurement in Release builds, feeding the F1/F3 overlays |
+| `mnk-input-driver.patch` | Keyboard and mouse driver: Shift, Control and Alt can be keys of their own without silencing the other keys while held, and the mouse can turn a game camera hooked by the app instead of standing in for the right stick |
 | `obdosdevices-relative-paths.patch` | Relative device path handling |
 | `physical-memory-trace.patch` | Physical memory diagnostics |
 | `ultrawide-presenter.patch` | Anamorphic presentation in the graphics backend |
