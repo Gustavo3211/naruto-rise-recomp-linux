@@ -24,6 +24,7 @@
 #include <rex/ui/overlay/debug_overlay.h>
 #include <rex/ui/window.h>
 
+#include "crash_report.h"
 #include "graphics_device.h"
 #include "input_replay.h"
 #include "ultrawide.h"
@@ -290,6 +291,7 @@ class NarutoriseApp : public rex::ReXApp {
   }
 
   void OnPostSetup() override {
+    narutorise::crash_report::Install();  // After the SDK's exception handler.
     RestoreXenosAdapter();  // The provider exists by now.
     SeedShaderStorage();
     AutoInstallDlc();

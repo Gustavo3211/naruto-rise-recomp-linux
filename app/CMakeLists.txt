@@ -21,6 +21,7 @@ set(NARUTORISE_SOURCES
     src/save_thumbnail.cpp
     src/input_replay.cpp
     src/graphics_device.cpp
+    src/crash_report.cpp
 )
 
 # The native renderer (opt-in): its own D3D boundary and engine, chosen at
