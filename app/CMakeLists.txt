@@ -23,6 +23,7 @@ set(NARUTORISE_SOURCES
     src/graphics_device.cpp
     src/crash_report.cpp
     src/window_title.cpp
+    src/mouse_camera.cpp
 )
 
 # The native renderer (opt-in): its own D3D boundary and engine, chosen at
@@ -84,6 +85,19 @@ if(NARUTORISE_NATIVE_RENDERER_BOOTSTRAP)
 else()
     rexglue_setup_target(narutorise GPU_PLUGINS xenos)
 endif()
+
+# The mouse camera inside each script module, the base game's and the DLCs':
+# the orbit routine of the exploration camera in each (mouse_camera_script.cpp).
+foreach(_narutorise_module IN ITEMS ai2c:sub_882227F8 ai2c1:sub_88228C18 ai2c2:sub_88234D28 ai2c3:sub_88235D10)
+    string(REPLACE ":" ";" _narutorise_module "${_narutorise_module}")
+    list(GET _narutorise_module 0 _narutorise_module_name)
+    list(GET _narutorise_module 1 _narutorise_orbit)
+    if(TARGET narutorise_${_narutorise_module_name})
+        target_sources(narutorise_${_narutorise_module_name} PRIVATE src/mouse_camera_script.cpp)
+        target_compile_definitions(narutorise_${_narutorise_module_name} PRIVATE
+            NARUTORISE_CAMERA_ORBIT=${_narutorise_orbit})
+    endif()
+endforeach()
 
 # The release version, in the window title when the copy has no
 # narutorise.version file (development builds), as in the launcher. The
