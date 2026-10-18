@@ -72,6 +72,10 @@ class Dispatcher final {
   // ran already or the dispatcher is not running.
   bool StartPool(size_t count, unsigned threads, std::function<void(size_t, Engine&)> work,
                  std::function<void(bool)> done);
+  // Runs operation(engine) on the calling thread, for the engine's
+  // free-threaded operations only (PostPipeline, PrecompilePipeline); the
+  // engine stays until it returns. False when the dispatcher is not running.
+  bool WithEngine(const std::function<void(Engine&)>& operation);
   // The translation stage. Deferred: the stage exists (fixed per session).
   bool Deferred() const;
   bool OnTranslator() const;  // The calling thread is the translator.

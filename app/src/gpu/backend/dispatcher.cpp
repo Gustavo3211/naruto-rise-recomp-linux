@@ -472,6 +472,17 @@ bool Dispatcher::StartPool(size_t count, unsigned threads,
   return true;
 }
 
+bool Dispatcher::WithEngine(const std::function<void(Engine&)>& operation) {
+  std::lock_guard lifecycle(state_->lifecycle);  // The engine stays until the operation returns.
+  {
+    std::lock_guard lock(state_->mutex);
+    if (!state_->dedicated || !state_->initialized || state_->closing || state_->stopped || !state_->engine)
+      return false;
+  }
+  operation(*state_->engine);
+  return true;
+}
+
 bool Dispatcher::Shutdown(std::string& evidence) {
   std::lock_guard lifecycle(state_->lifecycle);
   // The stage stops first: its pending tasks are dropped (a pending Run

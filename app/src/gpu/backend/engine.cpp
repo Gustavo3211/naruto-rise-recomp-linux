@@ -1,5 +1,6 @@
 #include "gpu/backend/engine.h"
 #include "gpu/backend/pipeline_set.h"
+#include "gpu/common/title_loading.h"
 #include "gpu/d3d/init/initializer_services.h"
 
 #include <windows.h>
@@ -257,6 +258,7 @@ struct Engine::State {
     std::array<uint32_t, 21> state{};
     const char* origin = "created";
     uint32_t create_us = 0;  // The creation by the draw ("created" or "warm"), 0 otherwise.
+    uint32_t world = 0;      // The world loaded last when the draw took it (common/title_loading.h).
   };
   std::vector<PipelineRecord> pipeline_records;
   // The pipelines between their creation and the owner's take: the embedded
@@ -2706,7 +2708,7 @@ bool Engine::DrawIndexed(const DrawRequest& r, uint64_t& fenceValue, std::string
     pipeline_time.Stop();
     if (skip_draw) state_->pipelines.erase(key);  // `pipeline` is not used below.
     else state_->pipeline_records.push_back({key, layout_id, r.vs_key, r.ps_key, r.elements, state_words, origin,
-                                             create_us});
+                                             create_us, WorldKey()});
   }
   // Textures: own copies with fixed SRV slots and cached samplers.
   // A copy is recreated only when no submitted work can still read it; a new
@@ -3082,8 +3084,8 @@ std::string Engine::PipelineList() {
         elements += fmt::format("{}[\"{}\",{},{},{},{}]", elements.empty() ? "" : ",", e.semantic, e.semantic_index,
                                 e.format, e.slot, e.offset);
     out += fmt::format("{}{{\"key\":\"{:016x}\",\"vs\":\"{}\",\"ps\":\"{}\",\"layout\":\"{:016x}\",\"elements\":[{}],"
-                       "\"state\":[{}],\"origin\":\"{}\",\"create_us\":{}}}", out.empty() ? "" : ",", p.key, p.vs,
-                       p.ps, p.layout_id, elements, fmt::join(p.state, ","), p.origin, p.create_us);
+                       "\"state\":[{}],\"origin\":\"{}\",\"create_us\":{},\"world\":\"{:08x}\"}}", out.empty() ? "" : ",",
+                       p.key, p.vs, p.ps, p.layout_id, elements, fmt::join(p.state, ","), p.origin, p.create_us, p.world);
   }
   return "[" + out + "]";
 }
@@ -3180,6 +3182,20 @@ void Engine::PrefetchPipelines(const std::vector<DrawRequest>& batch) {
             true, false))
       profile::Count(profile::kPipelinesPrefetched, 1);
   }
+}
+
+// As PrecompilePipeline reads the state: the root signature of PreparePipelines
+// and the render mode, fixed from then on; the key with the samples of the
+// render mode, as the draw computes it.
+bool Engine::PostPipeline(const PipelineDesc& d) {
+  if (!state_->device || !state_->draw_root) return false;
+  const bool depth_only = d.state[17];
+  if (!d.vs_dxil || d.vs_dxil->empty() || !d.elements || d.elements->empty() ||
+      (depth_only ? bool(d.ps_dxil) : !d.ps_dxil || d.ps_dxil->empty())) return false;
+  PipelineDesc listed = d;
+  listed.state[8] = state_->render_mode.Samples(listed.state[8]);
+  const uint64_t key = PipelineKey(listed.vs_key, listed.ps_key, listed.layout_id, listed.state);
+  return state_->pipeline_set.Post(key, std::move(listed), true, false);
 }
 
 std::string Engine::PipelineSummary() { return state_->pipeline_set.Summary(); }

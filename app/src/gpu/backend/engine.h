@@ -289,6 +289,12 @@ class Engine final {
   // pipeline set, posted to the asynchronous threads before the batch is
   // drawn (requests of PipelineTake::kPrefetch). Owner.
   void PrefetchPipelines(const std::vector<DrawRequest>& batch);
+  // Posts one description of the list to the asynchronous threads unless the
+  // pipeline set has its key already (the pool compiled it, or a draw took it):
+  // the pipelines of the world the title starts loading
+  // (shaders/pipelines.cpp). Any thread once PreparePipelines ran, as
+  // PrecompilePipeline; false when not posted.
+  bool PostPipeline(const PipelineDesc& desc);
   // How the pipelines were taken since Initialize, as JSON fields (any thread).
   std::string PipelineSummary();
   // Uploads the levels of a sampled copy (key, layout, version, data)
