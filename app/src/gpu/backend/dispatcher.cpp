@@ -179,6 +179,7 @@ struct Dispatcher::State {
     }
     profile::Count(profile::kDrawBatches, 1);
     const bool ok = PostLocked(lock, [batch](Engine& engine, std::string& out) {
+      engine.PrefetchPipelines(*batch);  // The absent pipelines of the batch, in parallel.
       for (const auto& request : *batch) {
         uint64_t fence = 0;
         if (!engine.DrawIndexed(request, fence, out)) return false;

@@ -39,6 +39,7 @@
 #include <fmt/ranges.h>
 #include <rex/cvar.h>
 #include <rex/hook.h>
+#include <rex/logging.h>
 #include <rex/system/kernel_state.h>
 #include <rex/system/thread_state.h>
 #include <rex/system/xthread.h>
@@ -209,9 +210,16 @@ namespace gpu {
 // on the stop and on the close.
 void RecordPipelines() {
   auto* dispatcher = host::ActiveDispatcher();
-  std::string pipelines;
-  if (!dispatcher || !dispatcher->Run([](Engine& engine, std::string& o) { o = engine.PipelineList(); return true; },
-                                      pipelines) || pipelines.empty()) return;
+  std::string pipelines, takes;
+  if (!dispatcher || !dispatcher->Run([&takes](Engine& engine, std::string& o) {
+        o = engine.PipelineList();
+        takes = engine.PipelineSummary();
+        return true;
+      }, pipelines) || pipelines.empty()) return;
+  // How the draws took their pipelines (pipeline_set.h): the record and, in
+  // the product (no journal), the SDK log.
+  host::Record("native-d3d-pipeline-takes", takes);
+  if (!host::Journaled()) REXLOG_INFO("[narutorise] Native renderer pipelines: {{{}}}", takes);
   size_t count = 0;
   for (size_t at = pipelines.find("{\"key\""); at != std::string::npos; at = pipelines.find("{\"key\"", at + 1)) ++count;
   std::string file = "null";
