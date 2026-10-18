@@ -33,8 +33,10 @@ if(NARUTORISE_NATIVE_RENDERER_BOOTSTRAP)
          src/gpu/host/host.cpp src/gpu/host/kernel_video.cpp src/gpu/host/kernel_threading.cpp
          src/gpu/host/kernel_modules.cpp src/gpu/host/journal.cpp src/gpu/host/stop.cpp src/gpu/host/engines.cpp
          src/gpu/host/graphics.cpp src/gpu/host/frame_completion.cpp src/gpu/host/guest_hooks.cpp src/gpu/host/exports.cpp
-         # The backend: the D3D12 engine, its dispatcher and the title-thread witness.
-         src/gpu/backend/engine.cpp src/gpu/backend/dispatcher.cpp src/gpu/backend/title_witness.cpp
+         src/gpu/host/title_loading.cpp
+         # The backend: the D3D12 engine, its pipeline set, its dispatcher and the title-thread witness.
+         src/gpu/backend/engine.cpp src/gpu/backend/pipeline_set.cpp src/gpu/backend/dispatcher.cpp
+         src/gpu/backend/title_witness.cpp
          # The D3D boundary of the native renderer, one unit per responsibility.
          src/gpu/d3d/hooks.cpp src/gpu/d3d/device.cpp src/gpu/d3d/resources.cpp
          src/gpu/d3d/pass.cpp src/gpu/d3d/draw.cpp src/gpu/d3d/state.cpp
@@ -49,6 +51,7 @@ if(NARUTORISE_NATIVE_RENDERER_BOOTSTRAP)
          src/gpu/diagnostics/present_proof.cpp
          src/gpu/diagnostics/crash_dump.cpp src/gpu/diagnostics/sampler.cpp
          src/gpu/diagnostics/heap_watch.cpp src/gpu/diagnostics/motion.cpp
+         src/gpu/diagnostics/shader_keys.cpp
          # The logic tick and the transforms of the state interpolation.
          src/gpu/interpolation/tick.cpp src/gpu/interpolation/transforms.cpp
          # The graphics options, under the SDK names.

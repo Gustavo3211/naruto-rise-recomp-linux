@@ -78,7 +78,7 @@ These apply to the native renderer. Report anything else through the [issue trac
 | Issue | Details |
 | --- | --- |
 | Slow close | With a controller connected, closing the window can leave a game thread waiting; the game gives its threads 3 seconds and then exits. Closing right after a fight has also been slow. |
-| Objects missing for a moment | A pipeline outside the startup list compiles the first time it appears, and its draws are skipped until it is ready. This was seen with new matchups in Fight Mode. |
+| Short pause when something new appears | A pipeline outside the startup list compiles the first time it appears on a given driver, and the draw waits for it instead of skipping it, so a new matchup in Fight Mode can pause for a few tens of milliseconds the first time. The game's loading screens give that compilation the highest priority. |
 | Light glows | The game uses occlusion queries only for light glows, and the native renderer answers them with a fixed value: a glow behind a wall stays visible, and large or close glows look dimmer than with Xenos. |
 | Minimap at 30 FPS | See [Limits](#limits). |
 | No ultrawide | The image stays 16:9, with bars on wider monitors. |
