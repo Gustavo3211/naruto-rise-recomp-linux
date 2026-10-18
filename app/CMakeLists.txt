@@ -51,6 +51,7 @@ if(NARUTORISE_NATIVE_RENDERER_BOOTSTRAP)
          src/gpu/diagnostics/present_proof.cpp
          src/gpu/diagnostics/crash_dump.cpp src/gpu/diagnostics/sampler.cpp
          src/gpu/diagnostics/heap_watch.cpp src/gpu/diagnostics/motion.cpp
+         src/gpu/diagnostics/shader_keys.cpp
          # The logic tick and the transforms of the state interpolation.
          src/gpu/interpolation/tick.cpp src/gpu/interpolation/transforms.cpp
          # The graphics options, under the SDK names.

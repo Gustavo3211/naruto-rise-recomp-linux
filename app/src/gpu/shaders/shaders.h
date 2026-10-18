@@ -128,6 +128,8 @@ std::shared_ptr<ShaderEntry> FindShaderEntry(uint8_t* base, uint32_t object, boo
 // Exact identification of an entry, once (render thread).
 void IdentifyEntry(ShaderEntry& e);
 bool ForgetShaderObject(uint32_t object);
+// The cache name of a registered shader object, or empty (diagnostics).
+std::string ShaderNameOf(uint32_t object, bool vertex);
 std::string ShaderRegistrySummary();
 extern std::atomic<uint64_t> shader_identified_tolerant;
 }  // namespace gpu

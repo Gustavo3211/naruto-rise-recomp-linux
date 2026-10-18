@@ -7,6 +7,7 @@
 // a ready pipeline, or waits for one being created; one missing from the list is
 // created by the draw. REX_NATIVE_PSO_PRECOMPILE=0 turns the pool off.
 #include "gpu/shaders/pipelines.h"
+#include "gpu/diagnostics/shader_keys.h"
 #include "gpu/d3d/draw.h"
 #include "gpu/shaders/shaders.h"
 #include "gpu/d3d/frame.h"
@@ -220,6 +221,8 @@ void RecordPipelines() {
   // the product (no journal), the SDK log.
   host::Record("native-d3d-pipeline-takes", takes);
   if (!host::Journaled()) REXLOG_INFO("[narutorise] Native renderer pipelines: {{{}}}", takes);
+  // The shader keys and the materials of the draws (diagnostics, shader_keys.h).
+  if (const std::string keys = RecordShaderKeys(); !keys.empty()) host::Record("native-d3d-shader-keys", keys);
   size_t count = 0;
   for (size_t at = pipelines.find("{\"key\""); at != std::string::npos; at = pipelines.find("{\"key\"", at + 1)) ++count;
   std::string file = "null";

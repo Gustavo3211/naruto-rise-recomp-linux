@@ -404,6 +404,21 @@ std::shared_ptr<ShaderEntry> FindShaderEntry(uint8_t* base, uint32_t object, boo
   if (Get32(base, object + (vertex ? 0x20 : 0x18)) != entry->code_base) { ++shader_binds_stale; return nullptr; }
   return entry;
 }
+// The cache name of a registered shader object, or empty: its identification,
+// else the exact lookup of its hash when no draw identified it yet.
+std::string ShaderNameOf(uint32_t object, bool vertex) {
+  std::shared_ptr<ShaderEntry> entry;
+  {
+    std::lock_guard lock(shader_entries_mutex);
+    auto it = shader_entries.find(object);
+    if (it != shader_entries.end()) entry = it->second;
+  }
+  if (!entry || entry->vertex != vertex) return {};
+  if (entry->identified) return entry->cached ? entry->cached->name : std::string();
+  uint32_t candidates = 0, differing = 0;
+  const CachedShader* cached = IdentifyShader(entry->bound, vertex, candidates, differing);
+  return cached ? cached->name : std::string();
+}
 bool ForgetShaderObject(uint32_t object) {
   std::lock_guard lock(shader_entries_mutex);
   const bool forgotten = shader_entries.erase(object) != 0;
