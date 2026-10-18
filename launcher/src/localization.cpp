@@ -165,7 +165,7 @@ const char* const kStringsEn[] = {
     // --- Renderer ---
     "Xenos (emulated GPU)",
     "Native (Direct3D 12)",
-    "Xenos emulates the Xbox 360 GPU and covers the whole game. The native renderer draws the game directly with Direct3D 12: faster and with more options, but still being tested in parts of the game.",
+    "The native renderer draws the game directly with Direct3D 12 and is the default: faster and with more options. Xenos emulates the Xbox 360 GPU and covers the whole game; choose it if something does not look right with the native renderer.",
     "Not available with the native renderer. Choose Xenos under Renderer to use it.",
     "MSAA",
     "4x (original)",
@@ -345,7 +345,7 @@ const char* const kStringsPtBr[] = {
     // --- Renderer ---
     "Xenos (GPU emulada)",
     "Nativo (Direct3D 12)",
-    "O Xenos emula a GPU do Xbox 360 e cobre o jogo inteiro. O renderizador nativo desenha o jogo diretamente com Direct3D 12: mais rápido e com mais opções, mas ainda em teste em partes do jogo.",
+    "O renderizador nativo desenha o jogo diretamente com Direct3D 12 e é o padrão: mais rápido e com mais opções. O Xenos emula a GPU do Xbox 360 e cobre o jogo inteiro; escolha-o se algo não aparecer certo com o renderizador nativo.",
     "Indisponível com o renderizador nativo. Escolha Xenos em Renderizador para usar.",
     "MSAA",
     "4x (original)",

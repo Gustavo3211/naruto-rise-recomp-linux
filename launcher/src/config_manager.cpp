@@ -11,7 +11,7 @@ bool ConfigManager::Load(const std::filesystem::path& toml_path, GameConfig& con
   try {
     auto tbl = toml::parse_file(toml_path.string());
     if (auto v = tbl["gpu_plugin"].value<std::string>()) config.gpu_plugin = *v;
-    if (auto v = tbl["renderer"].value<std::string>()) config.renderer = *v == "native" ? "native" : "xenos";
+    if (auto v = tbl["renderer"].value<std::string>()) config.renderer = *v == "xenos" ? "xenos" : "native";
     if (auto v = tbl["graphics_device"].value<std::string>()) config.graphics_device = *v;
     if (auto v = tbl["d3d12_readback_resolve"].value<bool>()) config.d3d12_readback_resolve = *v;
     if (auto v = tbl["skip_intro_videos"].value<bool>()) config.skip_intro_videos = *v;

@@ -14,9 +14,9 @@ inline constexpr bool kNativeRendererBuilt = false;
 
 struct GameConfig {
   std::string gpu_plugin = "xenos";
-  // "xenos" (the emulated GPU) or "native" (Direct3D 12); saved only when the
-  // executable carries the native renderer.
-  std::string renderer = "xenos";
+  // "native" (Direct3D 12, the default) or "xenos" (the emulated GPU); saved
+  // only when the executable carries the native renderer.
+  std::string renderer = "native";
   // The graphics card by its name, for both renderers; empty = automatic.
   std::string graphics_device = "";
   bool d3d12_readback_resolve = true;

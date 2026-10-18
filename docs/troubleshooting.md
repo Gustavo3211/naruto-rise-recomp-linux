@@ -49,7 +49,7 @@ Check `execute_unclipped_draw_vs_on_cpu = true`, `d3d12_readback_resolve = true`
 | Symptom | What to check |
 | --- | --- |
 | The launcher has no **Renderer** option | The build does not include the native renderer; see [Build and run](build-and-run.md#native-renderer-optional) |
-| Bars on an ultrawide monitor | Expected: the native renderer stays at 16:9 |
+| Bars on an ultrawide monitor | Expected: the native renderer stays at 16:9; select Xenos under **Settings → Display → Renderer** for 21:9 or 32:9 |
 | `F1` shows nothing | The overlays belong to Xenos; the native renderer shows the frame rate in the window title |
 | The frame rate stays at 30 in the open world or 60 in fights | Check the **Frame rate** slider; with VSync on, the rate does not exceed the monitor's refresh rate. Rates just above the game's step follow the step, see [Frame rate](renderers.md#frames-between-the-logic-steps) |
 | The rate varies at 120 FPS | Busy areas may not reach 120; choose 60 |

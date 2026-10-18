@@ -139,7 +139,7 @@ inline constexpr const char* kIt[] = {
     "Lingua dell'interfaccia del launcher",  // LauncherLanguageTooltip
     "Xenos (GPU emulata)",  // RendererXenos
     "Nativo (Direct3D 12)",  // RendererNative
-    "Xenos emula la GPU di Xbox 360 e copre tutto il gioco. Il renderer nativo disegna il gioco direttamente con Direct3D 12: più veloce e con più opzioni, ma ancora in prova in alcune parti del gioco.",  // RendererDescription
+    "Il renderer nativo disegna il gioco direttamente con Direct3D 12 ed è quello predefinito: più veloce e con più opzioni. Xenos emula la GPU di Xbox 360 e copre tutto il gioco; sceglilo se qualcosa non appare correttamente con il renderer nativo.",  // RendererDescription
     "Non disponibile con il renderer nativo. Scegli Xenos in Renderer per usarlo.",  // XenosOnlyReason
     "MSAA",  // MsaaLabel
     "4x (originale)",  // MsaaOriginal

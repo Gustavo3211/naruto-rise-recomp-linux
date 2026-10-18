@@ -14,10 +14,11 @@
 #include <rex/system/interfaces/graphics.h>
 #include <rex/system/xmemory.h>
 
-// The renderer of the game: the Xenos plugin (gpu_plugin) or the native one.
-// The native renderer runs here without the journal unless a path is given.
-REXCVAR_DEFINE_STRING(renderer, "xenos", "narutorise/Graphics",
-                      "Renderer: xenos (the emulated GPU) or native (Direct3D 12)")
+// The renderer of the game: the native one (the default) or the Xenos plugin
+// (gpu_plugin). The native renderer runs here without the journal unless a
+// path is given.
+REXCVAR_DEFINE_STRING(renderer, "native", "narutorise/Graphics",
+                      "Renderer: native (Direct3D 12, the default) or xenos (the emulated GPU)")
     .allowed({"xenos", "native"})
     .lifecycle(rex::cvar::Lifecycle::kRequiresRestart);
 // The diagnostic cases: the native mode with the journal and both options below.

@@ -103,8 +103,8 @@ Builds with the native renderer (`NARUTORISE_NATIVE_RENDERER_BOOTSTRAP=ON`, see 
 
 | Renderer | `renderer` |
 | --- | --- |
-| Xenos, the emulated Xbox 360 GPU of the SDK (default) | `"xenos"` |
-| Native, the game's Direct3D drawn with Direct3D 12 | `"native"` |
+| Native, the game's Direct3D drawn with Direct3D 12 (default) | `"native"` |
+| Xenos, the emulated Xbox 360 GPU of the SDK | `"xenos"` |
 
 [Renderers and frame rate](renderers.md) explains how the two differ, how the native renderer presents 60 and 120 FPS, and its known issues.
 

@@ -6,7 +6,7 @@
 
 <p align="center">
   A static recompilation for PC powered by ReXGlue<br>
-  <strong>Native Direct3D 12 renderer with 60 and 120 FPS (experimental) • Ultrawide • DLC support • Seven languages</strong>
+  <strong>Native Direct3D 12 renderer with 60 and 120 FPS • Ultrawide • DLC support • Seven languages</strong>
 </p>
 
 <p align="center">
@@ -19,13 +19,13 @@
 </p>
 
 > [!WARNING]
-> This project is a work in progress. Expect bugs, crashes, and visual issues, especially with the experimental native renderer. Keep a backup of your saves and report problems on the [Issues page](https://github.com/jorjbarbosa/naruto-rise-recomp/issues).
+> This project is a work in progress. Expect bugs, crashes, and visual issues; the native renderer, now the default, is the newest part, and Xenos remains available in the launcher if something does not look right. Keep a backup of your saves and report problems on the [Issues page](https://github.com/jorjbarbosa/naruto-rise-recomp/issues).
 
 ## About
 
 A PC port of **Naruto: Rise of a Ninja**, originally released for Xbox 360. The project uses the [ReXGlue SDK](https://github.com/rexglue/rexglue-sdk) to translate the game's PowerPC code into C++ and compile it for native execution. The SDK runtime provides system services, audio, and input.
 
-The game can be drawn by two renderers, chosen in the launcher: **Xenos**, the SDK's emulation of the Xbox 360 GPU and the default, and an experimental **native renderer** that draws the game's Direct3D calls with Direct3D 12 and can present at 60 or 120 FPS.
+The game can be drawn by two renderers, chosen in the launcher: the **native renderer**, the default, which draws the game's Direct3D calls with Direct3D 12 and can present at 60 or 120 FPS, and **Xenos**, the SDK's emulation of the Xbox 360 GPU, as the alternative.
 
 The current build and distribution workflow targets **Windows x64**. Presets for other platforms exist, but do not represent complete or verified support for this port.
 
@@ -36,7 +36,7 @@ The current build and distribution workflow targets **Windows x64**. Presets for
 
 **Graphics**
 
-- **Two renderers:** Xenos (default) and the experimental native Direct3D 12 renderer. See [Native renderer and 60 FPS](#native-renderer-and-60-fps).
+- **Two renderers:** the native Direct3D 12 renderer (default) and Xenos as the alternative. See [Native renderer and 60 FPS](#native-renderer-and-60-fps).
 - **60 and 120 FPS** with the native renderer, keeping the game's logic at its original rate.
 - **21:9 and 32:9 ultrawide** with the Xenos renderer, with projection adjustments and anamorphic presentation; a 16:9 option is available in the launcher.
 - **Internal resolution from 1× to 4×** (also 1.5× with the native renderer), up to 16× anisotropic filtering, FXAA, FidelityFX CAS/FSR, fullscreen, and VSync.
@@ -59,14 +59,14 @@ The current build and distribution workflow targets **Windows x64**. Presets for
 
 On Xbox 360, the game runs its logic in fixed steps: 30 per second in the open world and 60 in fights. The Xenos renderer keeps those rates. The native renderer can present more frames than the logic produces:
 
-| | Xenos (default) | Native (experimental) |
+| | Xenos | Native (default) |
 | --- | --- | --- |
 | How it draws | Emulates the Xbox 360 GPU and the command buffers the game writes for it | Intercepts the game's Direct3D calls and issues them with Direct3D 12; the shaders are translated when the port is built |
 | Frame rate | The game's: 30, and 60 in fights | 30, 60 or 120 in the launcher (up to 240 in `narutorise.toml`) |
 | Aspect ratio | 16:9, 21:9, and 32:9 | 16:9, with bars on wider monitors |
 | Options only in this renderer | Aspect ratio, dithering, `F1`/`F3` overlays | MSAA, transparency antialiasing, frame rate, brightness, frame latency, triple buffering |
 
-To use it, open **Settings → Display → Renderer** in the launcher and select **Native**, then choose the rate with the **Frame rate** slider (60 by default). The renderer option exists only in builds that include the native renderer ([build guide](docs/build-and-run.md#native-renderer-optional)); other builds always use Xenos.
+The native renderer is the default: choose the rate with the **Frame rate** slider under **Settings → Display** in the launcher (60 by default). To use Xenos instead, select it in **Settings → Display → Renderer**. A configuration saved by an earlier build with Xenos selected keeps it until you change it. The renderer option exists only in builds that include the native renderer ([build guide](docs/build-and-run.md#native-renderer-optional)); other builds always use Xenos.
 
 Above 30 FPS, the game's logic keeps its original step, and the renderer draws the frames in between by interpolating objects, characters' poses, and the camera between the last two logic steps. Game speed, physics, and timing stay those of the console. With VSync on, the rate does not exceed the monitor's refresh rate. The HUD minimap still updates at 30 FPS, and the image trails the logic by one step (up to about 33 ms in the open world).
 

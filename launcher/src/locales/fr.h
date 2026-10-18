@@ -139,7 +139,7 @@ inline constexpr const char* kFr[] = {
     "Langue de l'interface du lanceur",  // LauncherLanguageTooltip
     "Xenos (GPU émulé)",  // RendererXenos
     "Natif (Direct3D 12)",  // RendererNative
-    "Xenos émule le GPU de la Xbox 360 et couvre tout le jeu. Le moteur de rendu natif dessine le jeu directement avec Direct3D 12 : plus rapide et avec plus d'options, mais encore en test dans certaines parties du jeu.",  // RendererDescription
+    "Le moteur de rendu natif dessine le jeu directement avec Direct3D 12 et est utilisé par défaut : plus rapide et avec plus d'options. Xenos émule le GPU de la Xbox 360 et couvre tout le jeu ; choisissez-le si quelque chose ne s'affiche pas correctement avec le moteur de rendu natif.",  // RendererDescription
     "Non disponible avec le moteur de rendu natif. Choisissez Xenos dans Moteur de rendu pour l'utiliser.",  // XenosOnlyReason
     "MSAA",  // MsaaLabel
     "4x (original)",  // MsaaOriginal

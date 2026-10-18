@@ -131,8 +131,12 @@ int main(int argc, char** argv) {
             "Saving changed user_data_root");
     Write(path, "renderer = 'vulkan'\n");
     GameConfig unknown;
-    Require(ConfigManager::Load(path, unknown) && unknown.renderer == "xenos",
-            "An unknown renderer must fall back to Xenos");
+    Require(ConfigManager::Load(path, unknown) && unknown.renderer == "native",
+            "An unknown renderer must fall back to the native renderer, the default");
+    Write(path, "launcher_language = 'en'\n");
+    GameConfig no_renderer;
+    Require(ConfigManager::Load(path, no_renderer) && no_renderer.renderer == "native",
+            "A configuration without a renderer must open with the native renderer");
     std::cout << "Game languages persist; launcher language stays independent; "
                  "legacy, custom and invalid values handled; renderer options "
               << (kNativeRendererBuilt ? "saved" : "kept") << "\n";

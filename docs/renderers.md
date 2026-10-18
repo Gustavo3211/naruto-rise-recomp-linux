@@ -6,17 +6,17 @@ The port can draw the game with two renderers, chosen at each launch. This page 
 
 ## The two renderers
 
-### Xenos (default)
-
-The ReXGlue SDK's emulation of the Xbox 360 GPU, derived from Xenia. It executes the command buffers the game writes for the GPU, translates the game's shaders the first time they appear, and keeps them in the user cache; the bundled shader storage fills that cache in advance. It is the most tested path, supports 21:9 and 32:9, and runs the game at its original frame rates.
-
-### Native (experimental)
+### Native (default)
 
 The native renderer replaces the GPU emulation. It intercepts the game's Direct3D calls (device, resources, render states, draws, and presents) and issues them with Direct3D 12 through [Plume](https://github.com/renderbag/plume). The game's shaders are translated ahead of time by the XenosRecomp fork in `tools/xenosrecomp/`, compiled when the port is built, and embedded in `narutorise.exe`, so no shader compiler runs during play. Builds that carry a list of the pipelines seen in play compile it at startup; a pipeline outside that list compiles in the background the first time it appears.
 
 Without the emulation layer, it offers options that Xenos does not have: MSAA, transparency antialiasing, a 1.5× internal resolution, brightness, frame latency, triple buffering, and frame rates above 30.
 
-It has been played through the menus, the open world, missions, and fights, and compared with Xenos, but it is not verified across the whole game. Xenos remains the default.
+It has been played through the menus, the open world, missions, and fights, and compared with Xenos, but it is not verified across the whole game. It is the default since 0.2.0-beta.1.
+
+### Xenos (alternative)
+
+The ReXGlue SDK's emulation of the Xbox 360 GPU, derived from Xenia. It executes the command buffers the game writes for the GPU, translates the game's shaders the first time they appear, and keeps them in the user cache; the bundled shader storage fills that cache in advance. It is the longest-tested path, supports 21:9 and 32:9, and runs the game at its original frame rates. Choose it when something does not look right with the native renderer, or for an ultrawide aspect ratio.
 
 ### Comparison
 
@@ -38,7 +38,7 @@ Open **Settings → Display → Renderer** in the launcher, or set `renderer` in
 renderer = "native"   # or "xenos"
 ```
 
-The choice takes effect on the next launch. The launcher shows the options of both renderers: those the selected renderer does not use are greyed out and tagged, and the description panel says why. Builds without the native renderer ignore the key and leave its options out of the launcher; see [Build and run](build-and-run.md#native-renderer-optional) to include it.
+Without the key, the native renderer is used. A configuration saved by an earlier build with Xenos selected keeps Xenos until it is changed. The choice takes effect on the next launch. The launcher shows the options of both renderers: those the selected renderer does not use are greyed out and tagged, and the description panel says why. Builds without the native renderer ignore the key and leave its options out of the launcher; see [Build and run](build-and-run.md#native-renderer-optional) to include it.
 
 Both renderers honor the graphics card selected in the launcher. The log names the card in use: `DXGI adapter:` for Xenos, `Native renderer adapter:` for the native renderer.
 

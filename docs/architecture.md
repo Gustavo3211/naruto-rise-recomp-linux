@@ -20,7 +20,7 @@ Xbox 360 files + manifest + seeds
        Launcher → game execution
 ```
 
-PowerPC code is translated ahead of time into C++. The ReXGlue runtime provides the services required by the original game, including guest memory, kernel, content, audio, input, and Xenos GPU support. The game draws through one of two renderers, chosen at launch: the SDK's Xenos GPU emulation (the default, with the D3D12 backend on Windows) or the native renderer in `app/src/gpu/`, which draws the game's Direct3D calls with Direct3D 12 through Plume. The launcher has its own D3D11 renderer.
+PowerPC code is translated ahead of time into C++. The ReXGlue runtime provides the services required by the original game, including guest memory, kernel, content, audio, input, and Xenos GPU support. The game draws through one of two renderers, chosen at launch: the native renderer in `app/src/gpu/` (the default), which draws the game's Direct3D calls with Direct3D 12 through Plume, or the SDK's Xenos GPU emulation (with the D3D12 backend on Windows). The launcher has its own D3D11 renderer.
 
 ## Structure
 
@@ -61,7 +61,7 @@ PowerPC code is translated ahead of time into C++. The ReXGlue runtime provides 
 
 ## Native renderer
 
-The native renderer replaces the Xenos plugin at launch when `renderer = "native"`. It hooks the game's Direct3D layer instead of executing its GPU command buffers. User-facing behavior and known issues are in [Renderers and frame rate](renderers.md).
+The native renderer replaces the Xenos plugin at launch unless `renderer = "xenos"`; it is the default. It hooks the game's Direct3D layer instead of executing its GPU command buffers. User-facing behavior and known issues are in [Renderers and frame rate](renderers.md).
 
 | Path | Responsibility |
 | --- | --- |
@@ -114,7 +114,7 @@ The launcher saves the TOML file and starts the game with `--game_data_root`. Fo
 5. **Revision compatibility:** seeds and hooks use specific addresses. A table of hashes/revisions and test results for the game, DLCs, and TUs is missing.
 6. **Custom user data:** the runtime accepts `user_data_root`; the DLC launcher directly resolves Documents. Shared path resolution would prevent mismatches in customized installations.
 7. **Build configuration:** `narutorise_runtime_config` synchronizes the source TOML on each build and can overwrite preferences changed in the output folder.
-8. **Native renderer:** it is experimental and opt-in; its open defects are listed in [Renderers and frame rate](renderers.md#known-issues). Plume is an external checkout pinned by commit rather than a submodule, and the startup pipeline list is generated from local play sessions, so a clean clone builds without it.
+8. **Native renderer:** it is the default and the newest part of the port; its open defects are listed in [Renderers and frame rate](renderers.md#known-issues). Plume is an external checkout pinned by commit rather than a submodule, and the startup pipeline list is generated from local play sessions, so a clean clone builds without it.
 
 ## Maintenance guidance
 

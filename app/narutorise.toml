@@ -1,9 +1,9 @@
 # narutorise - runtime configuration (auto-read on startup)
 
 gpu_plugin = "xenos"
-# Renderer: "xenos" (the emulated GPU) or "native" (Direct3D 12), in builds
-# with the native renderer.
-renderer = "xenos"
+# Renderer: "native" (Direct3D 12, the default) or "xenos" (the emulated GPU),
+# in builds with the native renderer; builds without it always use Xenos.
+renderer = "native"
 # Graphics card by its name as Windows lists it, for both renderers;
 # empty = automatic.
 graphics_device = ""
