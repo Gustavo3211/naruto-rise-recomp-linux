@@ -3,7 +3,11 @@
 #include "gpu/interpolation/tick.h"
 #include "gpu/common/guest_memory.h"
 #include "gpu/d3d/d3d.h"
+#include "gpu/diagnostics/diagnostics.h"
 #include "gpu/diagnostics/motion.h"
+#include "gpu/host/services.h"
+#include <windows.h>
+#include <fmt/format.h>
 #include <rex/hook.h>
 #include <rex/ppc/context.h>
 #include <algorithm>
@@ -48,11 +52,23 @@ constexpr size_t kCameraFloats = 16;
 
 using Matrix = std::array<float, 16>;
 using Camera = std::array<float, kCameraFloats>;
+// An engine matrix is 68 bytes: the 16 floats and a type word at +64. With
+// kScaleFlag in it, the fourth column (+12, +28, +44) scales the rows; without
+// it the column is not read and may hold anything (zeros on the indicators
+// over the characters at full size).
+constexpr uint32_t kTypeOffset = 64, kScaleFlag = 8;
 struct Track {
   uint32_t matrix = 0;
   uint64_t tick = 0;
   bool valid = false;
   Matrix previous{}, current{};
+  uint32_t previous_type = 0, current_type = 0;
+  // The display turned the written matrix in place (a billboard): what the
+  // view block left on it (Restore), until the next write or tick. A matrix
+  // shared by objects is written once per block, and this is on the track
+  // that wrote it.
+  bool turned = false;
+  Matrix left{};
 };
 struct CameraTrack {
   uint32_t entry = 0;
@@ -71,9 +87,14 @@ struct BoneTrack {
 struct Written {
   uint32_t address = 0, count = 0;
   Matrix value{}, live{};
+  uint32_t object = 0;  // An object matrix's object, 0 otherwise.
+  // The type word written with the scale flag (the blend scales a matrix the
+  // tick's does not), and the live one.
+  bool type_written = false;
+  uint32_t type_value = 0, type_live = 0;
 };
 
-int enabled = -1, bones_enabled = -1;
+int enabled = -1, bones_enabled = -1, turned_enabled = -1;
 std::unordered_map<uint32_t, Track> tracks;  // By object.
 std::unordered_map<uint32_t, BoneTrack> bone_tracks;  // By matrix.
 std::unordered_set<uint32_t> object_written;  // The object matrices written in this view block.
@@ -142,6 +163,11 @@ void BlendMatrix(const float* a, const float* b, float t, float* out) {
   }
   for (int i = 12; i < 16; ++i) out[i] = a[i] + (b[i] - a[i]) * t;
 }
+// The fourth column as the engine reads it: a scale of 1 without the flag.
+Matrix ScaleAsRead(Matrix m, uint32_t type) {
+  if (!(type & kScaleFlag)) m[3] = m[7] = m[11] = 1.0f;
+  return m;
+}
 bool MatrixCut(const Matrix& a, const Matrix& b) {
   if (Distance3(a.data() + 12, b.data() + 12) > kCutDistance) return true;
   for (int row = 0; row < 3; ++row)
@@ -149,6 +175,9 @@ bool MatrixCut(const Matrix& a, const Matrix& b) {
   return false;
 }
 bool ReadCamera(uint8_t* base, uint32_t entry, Camera& out) { return ReadFloats(base, entry, out.data(), kCameraFloats); }
+void WriteMatrix(uint8_t* base, uint32_t address, const Matrix& m) {
+  for (uint32_t i = 0; i < 16; ++i) PutFloat(base, address + 4 * i, m[i]);
+}
 void WriteCamera(uint8_t* base, uint32_t entry, const Camera& c) {
   for (uint32_t i = 0; i < kCameraFloats; ++i) PutFloat(base, entry + 4 * i, c[i]);
 }
@@ -200,14 +229,53 @@ bool BonesEnabled() {
   return bones_enabled == 1;
 }
 
-// Puts back the live values where nothing else wrote since.
-void PutBack(uint8_t* base, const std::vector<Written>& list) {
-  for (const auto& w : list) {
-    bool ours = true;
-    for (uint32_t i = 0; i < w.count && ours; ++i) ours = GetFloat(base, w.address + 4 * i) == w.value[i];
-    if (ours)
-      for (uint32_t i = 0; i < w.count; ++i) PutFloat(base, w.address + 4 * i, w.live[i]);
+// The matrices the display turns in place (transforms.h):
+// REX_NATIVE_INTERPOLATION_TURNED=0 leaves them as the view block left them;
+// with the diagnostics, F7 switches it at run time.
+bool TurnedEnabled() {
+  if (turned_enabled < 0) {
+    const char* text = std::getenv("REX_NATIVE_INTERPOLATION_TURNED");
+    turned_enabled = !(text && std::string_view(text) == "0") ? 1 : 0;
   }
+  return turned_enabled == 1;
+}
+bool f7_down = false;
+void SwitchTurned() {
+  if (!Diagnostics()) return;
+  const bool down = (GetAsyncKeyState(VK_F7) & 0x8000) != 0;
+  if (down && !f7_down) {
+    turned_enabled = TurnedEnabled() ? 0 : 1;
+    host::Record("native-d3d-interpolation-turned-switch", fmt::format("\"on\":{}", turned_enabled == 1));
+  }
+  f7_down = down;
+}
+// Since the start, with the diagnostics a native-d3d-interpolation-turned
+// record every kTurnedRecordEvery view blocks: the object matrices written,
+// those the view block changed, those only turned (given the tick's scale and
+// position back), turned ones written again in a frame without a tick, and
+// those written outside the logic (lost).
+constexpr uint64_t kTurnedRecordEvery = 600;
+struct TurnedCounts {
+  uint64_t blocks = 0, written = 0, changed = 0, turned = 0, rewritten = 0, lost = 0;
+} turned_counts;
+void RecordTurned() {
+  if (++turned_counts.blocks % kTurnedRecordEvery || !Diagnostics()) return;
+  const auto& c = turned_counts;
+  host::Record("native-d3d-interpolation-turned", fmt::format(
+      "\"blocks\":{},\"written\":{},\"changed\":{},\"turned\":{},\"rewritten\":{},\"lost\":{},\"on\":{}", c.blocks,
+      c.written, c.changed, c.turned, c.rewritten, c.lost, TurnedEnabled()));
+}
+
+// Puts back the live value where nothing else wrote since; false where
+// something did.
+bool PutBack(uint8_t* base, const Written& w) {
+  for (uint32_t i = 0; i < w.count; ++i)
+    if (GetFloat(base, w.address + 4 * i) != w.value[i]) return false;
+  for (uint32_t i = 0; i < w.count; ++i) PutFloat(base, w.address + 4 * i, w.live[i]);
+  return true;
+}
+void PutBack(uint8_t* base, const std::vector<Written>& list) {
+  for (const auto& w : list) PutBack(base, w);
 }
 
 // The bone matrices the pose copy of a skinned mesh reads (82580968, the
@@ -293,7 +361,7 @@ void Pose(uint8_t* base, uint32_t object, uint32_t geometry, std::vector<Written
     w.count = 16;
     BlendMatrix(t.previous.data(), t.current.data(), f.alpha, w.value.data());
     std::copy(live.begin(), live.end(), w.live.begin());
-    for (uint32_t i = 0; i < 16; ++i) PutFloat(base, m + 4 * i, w.value[i]);
+    WriteMatrix(base, m, w.value);
     out.push_back(w);
     ++applied.bones;
   }
@@ -347,6 +415,7 @@ void ViewStart(uint8_t* base) {
   }
   main_thread = GuestThread();
   watching = true;
+  SwitchTurned();
   {
     std::vector<uint32_t> gone;
     bool overflow = false;
@@ -379,13 +448,18 @@ void ViewStart(uint8_t* base) {
       // An object freed since the display by another path than 820C0018 may
       // hold anything at +20: the reads are guarded, and the track stays at
       // its tick (no write, gone after two ticks).
-      uint32_t m = 0;
+      uint32_t m = 0, type = 0;
       Matrix live;
-      if (!Read32(base, object + 20, m) || !m || !ReadFloats(base, m, live.data(), 16)) continue;
+      if (!Read32(base, object + 20, m) || !m || !ReadFloats(base, m, live.data(), 16) ||
+          !Read32(base, m + kTypeOffset, type))
+        continue;
       Track& t = tracks[object];
       const bool continuing = t.matrix == m && t.tick + 1 == tick;
       t.previous = continuing ? t.current : live;
       t.current = live;
+      t.previous_type = continuing ? t.current_type : type;
+      t.current_type = type;
+      t.turned = false;
       const bool cut = continuing && MatrixCut(t.previous, t.current);
       if (cut) ++applied.object_cuts;
       t.valid = continuing && !cut && Finite(t.previous.data(), 16) && Finite(live.data(), 16);
@@ -401,17 +475,40 @@ void ViewStart(uint8_t* base) {
   std::unordered_set<uint32_t> matrices;
   for (auto& [object, t] : tracks) {
     if (!t.valid || t.tick != tick || t.previous == t.current || !matrices.insert(t.matrix).second) continue;
+    // In a frame without a tick, a matrix the display turned holds the turn
+    // the last view block left (Restore): the interpolated value goes under
+    // it again, as the display ran once per state of the logic on the console.
     Matrix live;
-    if (!ReadFloats(base, t.matrix, live.data(), 16) || live != t.current) {  // Written outside the logic since the tick.
+    if (!ReadFloats(base, t.matrix, live.data(), 16)) {
       t.valid = false;
       continue;
     }
+    const bool turned = TurnedEnabled() && t.turned && live == t.left;
+    if (live != t.current && !turned) {  // Written outside the logic since the tick.
+      t.valid = false;
+      ++turned_counts.lost;
+      continue;
+    }
+    if (turned) ++turned_counts.rewritten;
+    t.turned = false;
     Written w;
     w.address = t.matrix;
     w.count = 16;
-    BlendMatrix(t.previous.data(), t.current.data(), alpha, w.value.data());
+    w.object = object;
+    const Matrix from = ScaleAsRead(t.previous, t.previous_type), to = ScaleAsRead(t.current, t.current_type);
+    BlendMatrix(from.data(), to.data(), alpha, w.value.data());
     std::copy(t.current.begin(), t.current.end(), w.live.begin());
-    for (uint32_t i = 0; i < 16; ++i) PutFloat(base, w.address + 4 * i, w.value[i]);
+    WriteMatrix(base, w.address, w.value);
+    // The blend scales a matrix the tick's does not (growing to a scale of 1,
+    // which drops the flag): the flag goes with it.
+    uint32_t type = 0;
+    if (!(t.current_type & kScaleFlag) && (w.value[3] != 1.0f || w.value[7] != 1.0f || w.value[11] != 1.0f) &&
+        Read32(base, w.address + kTypeOffset, type) && type == t.current_type) {
+      w.type_written = true;
+      w.type_live = type;
+      w.type_value = type | kScaleFlag;
+      Put32(base, w.address + kTypeOffset, w.type_value);
+    }
     written.push_back(w);
     object_written.insert(w.address);
     ++applied.objects;
@@ -438,9 +535,34 @@ void CameraEntry(uint8_t* base, uint32_t entry) {
 }
 
 // After the delivery: the live transforms come back where nothing else wrote.
+// Where the display only turned a written object matrix (a billboard: the
+// scale column and the position as written), the tick's scale and position go
+// back under the turn: the logic of the next tick reads the matrix (the
+// indicators over the characters animate their scale from it), and on the
+// console it read its own values turned by the display.
 void Restore(uint8_t* base) {
-  PutBack(base, written);
+  turned_counts.written += written.size();
+  for (const auto& w : written) {
+    uint32_t type = 0;
+    if (w.type_written && Read32(base, w.address + kTypeOffset, type) && type == w.type_value)
+      Put32(base, w.address + kTypeOffset, w.type_live);
+    if (PutBack(base, w)) continue;
+    ++turned_counts.changed;
+    Matrix now;
+    bool turned = TurnedEnabled() && ReadFloats(base, w.address, now.data(), 16);
+    for (int row = 0; row < 3; ++row) turned = turned && now[4 * row + 3] == w.value[4 * row + 3];
+    for (int i = 12; i < 16; ++i) turned = turned && now[i] == w.value[i];
+    const auto it = tracks.find(w.object);
+    if (!turned || it == tracks.end() || it->second.matrix != w.address) continue;
+    for (int row = 0; row < 3; ++row) now[4 * row + 3] = w.live[4 * row + 3];
+    for (int i = 12; i < 16; ++i) now[i] = w.live[i];
+    WriteMatrix(base, w.address, now);
+    it->second.turned = true;
+    it->second.left = now;
+    ++turned_counts.turned;
+  }
   written.clear();
+  RecordTurned();
   PutBack(base, camera_written);
   camera_written.clear();
   collecting = false;

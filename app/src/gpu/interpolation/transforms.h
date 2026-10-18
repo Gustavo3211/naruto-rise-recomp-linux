@@ -14,8 +14,21 @@
 // from it). Then, in every iteration of the gate, the transform at the tick's
 // alpha (tick.h) is written over the live one (the objects before the view
 // block, the camera before 82659B88) and the live one comes back after the
-// delivery (8259FF40), unless something wrote the place meanwhile. The display copies the matrices into the frame's
-// packet (P2 of the study), so nothing else reads them.
+// delivery (8259FF40), unless something wrote the place meanwhile (but for the
+// turned matrices below). The display copies the matrices into the frame's
+// packet (P2 of the study), so the render thread does not read them.
+//
+// An engine matrix has a type word at +64; with its scale flag the fourth
+// column scales the rows, and without it the column blends as a scale of 1
+// (when the blend scales a matrix whose tick does not, the flag is written
+// with it and comes back too). The display turns some matrices in place (the
+// billboards: the indicators over the characters), so the write does not come
+// back; the logic of the next tick reads them (the indicators animate their
+// scale from the matrix). Where the view block only turned a written matrix,
+// the tick's scale and position go back under the turn, and a frame without
+// a tick writes the interpolated value under it again.
+// REX_NATIVE_INTERPOLATION_TURNED=0 leaves them as the view block left them
+// (with the diagnostics, F7 switches it at run time).
 //
 // Rows of the rotation are interpolated linearly and keep the interpolated
 // length; the position linearly. Cuts, without interpolation until the next
