@@ -25,7 +25,7 @@
 // the tick rate when the gate is off under the fixed step) and the time step
 // stays the title's (no rewrite of +76). With the mode set by the
 // variable, F8 switches the gate off and on at run time (off, the frame is the
-// 1/60 s simulation of unlock_fps: every iteration a tick, +76 rewritten) and
+// 1/60 s simulation of a forced interval: every iteration a tick, +76 rewritten) and
 // the window title shows it. Changes and every 300th iteration are recorded
 // as native-d3d-tick (diagnostics). Main thread.
 //

@@ -91,8 +91,8 @@ int main(int argc, char** argv) {
                 native.internal_resolution_scale == 1.5 && native.frame_rate == 120 &&
                 native.transparency_antialiasing && native.max_frame_latency == 2 && native.triple_buffering,
             "Native renderer options were not read");
-    // The 60 fps option from before frame_rate opens at 60; the frame rate is
-    // saved with it off, since the launcher no longer offers it.
+    // The 60 fps option from before frame_rate opens at 60; the save removes
+    // it, since the game no longer has it.
     Write(path, "frame_rate = 30\n");
     GameConfig original;
     Require(ConfigManager::Load(path, original) && original.frame_rate == 30, "frame_rate 30 was not read");
@@ -102,9 +102,8 @@ int main(int argc, char** argv) {
     unlocked.frame_rate = 144;
     Require(ConfigManager::Save(path, unlocked), "frame_rate failed to save");
     const auto rates = toml::parse_file(path.string());
-    Require(kNativeRendererBuilt ? rates["frame_rate"].value<int>() == 144 && rates["unlock_fps"].value<bool>() == false
-                                 : rates["unlock_fps"].value<bool>() == true,
-            "frame_rate and unlock_fps were not saved as built");
+    Require(!rates.contains("unlock_fps") && (!kNativeRendererBuilt || rates["frame_rate"].value<int>() == 144),
+            "frame_rate was not saved as built or unlock_fps was kept");
     native.renderer = "xenos";
     native.msaa_samples = 2;
     Require(ConfigManager::Save(path, native), "Native renderer options failed to save");

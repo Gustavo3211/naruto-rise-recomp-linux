@@ -39,12 +39,6 @@ struct Settings {
   // Own option: alpha-tested
   // draws into multisampled targets use alpha to coverage instead.
   bool transparency_antialiasing = false;  // transparency_antialiasing
-  // Own option: the menus and the open world at 60
-  // Swaps/s. The title asks for presentation interval 2 there and runs the
-  // open world with a fixed step of 2/60 s; the option paces the Swap at 1/60 s
-  // and rewrites that fixed step to 1/60 s (d3d/frame.cpp). The fight already
-  // runs at 60.
-  bool unlock_fps = false;            // unlock_fps
   // Own option: above 30, the
   // state interpolation (gpu/interpolation/tick.h) at that frame rate.
   uint32_t frame_rate = 30;           // frame_rate: 30 (the game's) to 240

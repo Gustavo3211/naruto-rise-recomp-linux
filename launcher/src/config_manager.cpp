@@ -71,12 +71,14 @@ bool ConfigManager::Save(const std::filesystem::path& toml_path, const GameConfi
 
   tbl.insert_or_assign("gpu_plugin", config.gpu_plugin);
   tbl.insert_or_assign("graphics_device", config.graphics_device);
+  // The 60 fps option from before frame_rate is no longer an option of the
+  // game: a configuration that still has it loses it on the first save.
+  tbl.erase("unlock_fps");
   if (kNativeRendererBuilt) {
     tbl.insert_or_assign("renderer", config.renderer);
     tbl.insert_or_assign("msaa_samples", config.msaa_samples);
     tbl.insert_or_assign("transparency_antialiasing", config.transparency_antialiasing);
     tbl.insert_or_assign("frame_rate", config.frame_rate);
-    tbl.insert_or_assign("unlock_fps", false);
     tbl.insert_or_assign("brightness", config.brightness);
     tbl.insert_or_assign("internal_resolution_scale", config.internal_resolution_scale);
     tbl.insert_or_assign("max_frame_latency", config.max_frame_latency);

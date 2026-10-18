@@ -197,9 +197,10 @@ void MeterSwap() {
   });
 }
 // The interval the own Swap is paced at when it is not the title's: 1 with the
-// unlock_fps option (settings.h) or the state interpolation mode (tick.h, when
-// its gate is switched off by F8), or the diagnostic REX_NATIVE_SWAP_INTERVAL
-// (1..4), which wins when set. 0 keeps the title's +13580.
+// state interpolation mode (tick.h, when its gate is switched off by F8), or
+// the diagnostic REX_NATIVE_SWAP_INTERVAL (1..4), which wins when set. 0 keeps
+// the title's +13580. The 1/60 s simulation of the open world is not a product
+// option: it holds Naruto at the wall of the first mission's bridge.
 uint32_t ForcedSwapInterval() {
   static const uint32_t environment = [] {
     const char* text = std::getenv("REX_NATIVE_SWAP_INTERVAL");
@@ -207,14 +208,14 @@ uint32_t ForcedSwapInterval() {
     return n >= 1 && n <= 4 ? uint32_t(n) : 0u;
   }();
   if (environment) return environment;
-  return CurrentSettings().unlock_fps || tick::Enabled() ? 1u : 0u;
+  return tick::Enabled() ? 1u : 0u;
 }
 // The engine's time update (826ACFC0, main thread,
 // r3 = the time structure whose pointer is at 82C0F080) measures the dt from
 // the QPC tick unless the fixed-step flag (+72) is set, when the dt is +76.
 // The open world runs with the fixed step of the title's interval (2/60 s),
 // so a Swap paced at 1/60 s would double the game speed.
-// With a forced interval (unlock_fps or REX_NATIVE_SWAP_INTERVAL), +76 is
+// With a forced interval (ForcedSwapInterval), +76 is
 // rewritten from the title's interval / 60 s to the forced interval / 60 s
 // before each update, only when it holds the title's value (a dt set by a
 // script stays). The fields are recorded as native-d3d-time-step: the first
@@ -346,7 +347,7 @@ void TimeStepHook(PPCContext& ctx, uint8_t* base) {
 void PaceSwap(PPCContext& ctx, uint8_t* base, uint32_t dev) {
   profile::Timer pace_time(profile::kSwapPace);
   auto& l = swap_limiter;
-  // unlock_fps (or REX_NATIVE_SWAP_INTERVAL=<1..4>)
+  // A forced interval (ForcedSwapInterval: REX_NATIVE_SWAP_INTERVAL=<1..4>)
   // paces the own Swap at that interval instead of the title's +13580, which
   // stays untouched (the title keeps requesting 2 in the menus and the open
   // world, 1 in the fight). The engine's fixed step follows it (TimeStepHook).

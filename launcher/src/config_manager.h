@@ -49,7 +49,7 @@ struct GameConfig {
   int msaa_samples = 0;  // 0 = the game's 4x, or 2, 4, 8
   bool transparency_antialiasing = false;
   // 30 = the game's; above it, the frames between the game's logic steps are
-  // interpolated. Saved with unlock_fps off, which the launcher no longer offers.
+  // interpolated. An old unlock_fps key opens at 60 and is removed on save.
   int frame_rate = 60;
   double brightness = 0.5;  // 0.5 = the game's
   double internal_resolution_scale = 0.0;  // fractional scale; 0 = resolution_scale
