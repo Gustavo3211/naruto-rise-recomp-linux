@@ -345,6 +345,20 @@ uint32_t RunOverDiscard(PPCContext& ctx, uint8_t* base, uint32_t dev, GuestFunct
 extern "C" void __imp__sub_82137E00(PPCContext& __restrict, uint8_t*);
 extern "C" void __imp__sub_82137A18(PPCContext& __restrict, uint8_t*);
 namespace gpu {
+// REX_NATIVE_PROBE_TEXTURE=<texture key>, with the diagnostics: each draw
+// that samples the texture records the positions of the first four vertices
+// of its stream from the base vertex and its vertex constants c0..c3
+// (native-d3d-probe-draw), at most kProbeDraws, without reading the frame
+// back; the capture keeps the first four rows of the vertex shadow.
+constexpr uint64_t kProbeDraws = 40000;
+uint32_t ProbeTexture() {
+  static const uint32_t value = [] {
+    const char* text = std::getenv("REX_NATIVE_PROBE_TEXTURE");
+    return Diagnostics() && text && *text ? uint32_t(std::strtoul(text, nullptr, 10)) : 0u;
+  }();
+  return value;
+}
+std::atomic<uint64_t> probe_draws{0};
 // The pipeline take of the batched draws (DrawRequest::PipelineTake): the
 // prefetch take by default (the draw never skips); REX_NATIVE_PSO_ASYNC=0
 // turns the asynchronous threads off (the draw waits for or creates its
@@ -962,6 +976,8 @@ void CaptureDraw(PPCContext& ctx, uint8_t* base, bool indexed, InlineBuild* quad
   if (FrameTraceActive()) {  // The whole shadows, for the diagnosis of the traced draws.
     c.trace_vs_constants.assign(vs_shadow.bytes.begin(), vs_shadow.bytes.end());
     c.trace_ps_constants.assign(ps_shadow.bytes.begin(), ps_shadow.bytes.end());
+  } else if (ProbeTexture() && vs_shadow.bytes.size() >= 64) {  // The rows the probe records.
+    c.trace_vs_constants.assign(vs_shadow.bytes.begin(), vs_shadow.bytes.begin() + 64);
   }
   c.bind_swap = swaps.load() + 1;
 }
@@ -1396,6 +1412,40 @@ DrawTranslation TranslateDraw(DrawCapture& c, GuardSink& sink) {
   request.depth_key = request.depth_enable || request.stencil_enable ? c.depth_backing : 0;
   if (!request.color_key && !depth_only) guard("render-target-unbound", state_record);
   if (depth_only && !request.depth_key) guard("depth-only-target-unbound", state_record);
+  if (const uint32_t probe = ProbeTexture();
+      probe && std::any_of(request.textures.begin(), request.textures.end(), [&](const auto& t) { return t.key == probe; }) &&
+      probe_draws.fetch_add(1) < kProbeDraws) {
+    // The positions as the shader fetches them (three floats, swapped as the stream).
+    const std::vector<VertexElement>& elements = *request.elements;
+    const auto position = std::find_if(elements.begin(), elements.end(), [](const VertexElement& e) {
+      return std::string_view(e.semantic) == "POSITION" && e.semantic_index == 0;
+    });
+    std::string positions = "null";
+    if (position != elements.end() && position->slot < stream_address.size()) {
+      const VertexStream& stream = request.streams[position->slot];
+      std::vector<uint8_t> raw(12);
+      positions.clear();
+      for (uint32_t v = 0; v < 4; ++v) {
+        const int64_t at = (int64_t(v) + base_vertex) * stream.stride + position->offset;
+        float f[3]{};
+        if (at >= 0 && size_t(at) + 12 <= stream.data.size()) {
+          std::memcpy(f, &stream.data[size_t(at)], 12);
+        } else if (at >= 0 && stream.key && ReadPhysical(base, stream_address[position->slot] + uint32_t(at), 12, raw.data()) &&
+                   SwapEndian(raw, stream_endian[position->slot])) {
+          std::memcpy(f, raw.data(), 12);
+        }
+        positions += fmt::format("{}{},{},{}", positions.empty() ? "" : ",", JsonFloat(f[0]), JsonFloat(f[1]), JsonFloat(f[2]));
+      }
+      positions = "[" + positions + "]";
+    }
+    float rows[16]{};
+    if (c.trace_vs_constants.size() >= sizeof(rows)) std::memcpy(rows, c.trace_vs_constants.data(), sizeof(rows));
+    std::string constants;
+    for (const float f : rows) constants += fmt::format("{}{}", constants.empty() ? "" : ",", JsonFloat(f));
+    host::Record("native-d3d-probe-draw", fmt::format(
+        "\"swap\":{},\"lr\":{},\"index_count\":{},\"base_vertex\":{},\"positions\":{},\"c0_c3\":[{}]", c.bind_swap,
+        lr, index_count, base_vertex, positions, constants));
+  }
   if (FrameTraceActive()) {
     std::string textures;
     for (const auto& t : request.textures)
