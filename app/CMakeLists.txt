@@ -19,6 +19,7 @@ set(NARUTORISE_SOURCES
     src/intro_skip.cpp
     src/ultrawide.cpp
     src/save_thumbnail.cpp
+    src/engine_free.cpp
     src/input_replay.cpp
     src/graphics_device.cpp
     src/crash_report.cpp
