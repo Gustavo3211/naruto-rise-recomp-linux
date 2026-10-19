@@ -23,6 +23,8 @@ class Engine final {
   explicit Engine(std::shared_ptr<FailureChannel> failures);
   ~Engine();
   bool Initialize(std::string& evidence, const RenderMode& mode = RenderMode{});
+  // The API of the backend (RenderMode::api), from Initialize on.
+  GraphicsApi Api() const { return api_; }
   // The device in use by its name (the DXGI description on D3D12), after Initialize.
   std::string DeviceName() const;
   bool Shutdown(std::string& evidence);
@@ -158,5 +160,6 @@ class Engine final {
   bool Refused(std::string& evidence) const;
   const std::shared_ptr<FailureChannel> failures_;
   std::unique_ptr<Backend> backend_;
+  GraphicsApi api_ = GraphicsApi::kD3D12;
 };
 }  // namespace gpu

@@ -35,6 +35,7 @@ class Dispatcher final {
   ~Dispatcher();
   bool Initialize(std::string& evidence, const RenderMode& mode = RenderMode{});  // The engine's render mode.
   std::string DeviceName() const;  // The engine's adapter, after Initialize.
+  GraphicsApi Api() const;  // The engine's API, after Initialize.
   bool InitializeFrontend(uint64_t session_generation, std::string& evidence);
   bool VerifyFrontend(uint64_t session_generation, std::string& evidence);
   bool ReleaseFrontend(uint64_t session_generation, std::string& evidence);

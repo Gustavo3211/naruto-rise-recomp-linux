@@ -282,6 +282,10 @@ std::string Dispatcher::DeviceName() const {
   std::lock_guard lifecycle(state_->lifecycle);
   return state_->engine ? state_->engine->DeviceName() : std::string();
 }
+GraphicsApi Dispatcher::Api() const {
+  std::lock_guard lifecycle(state_->lifecycle);
+  return state_->engine ? state_->engine->Api() : RenderMode{}.api;
+}
 
 bool Dispatcher::InitializeFrontend(uint64_t generation, std::string& evidence) {
   return Frontend(0, generation, evidence);

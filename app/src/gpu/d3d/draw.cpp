@@ -828,7 +828,10 @@ void CaptureDraw(PPCContext& ctx, uint8_t* base, bool indexed, InlineBuild* quad
   original_time.Stop();
   if (candidate) ReadStartAfter(base, *c.live);  // START entry after the original commit.
   profile::Timer shaders_time(profile::kDrawShaders);
-  std::call_once(shader_cache.once, LoadShaderCache);
+  std::call_once(shader_cache.once, [] {  // The package of the session's API.
+    const auto* dispatcher = host::ActiveDispatcher();
+    LoadShaderCache(ShaderFormatOf(dispatcher ? dispatcher->Api() : RenderMode{}.api));
+  });
   StartPipelinePrecompileOnce();
   InlineGuardSink sink(saved);
   const DrawGuard guard{c, sink};
@@ -1054,11 +1057,12 @@ DrawTranslation TranslateDraw(DrawCapture& c, GuardSink& sink) {
   // The VS takes its base variant (spec 0: its vertex fetch is decoded by the
   // descriptors); the PS variant is chosen with the alpha test state below.
   request.vs.key = vs_cached->name;
+  request.vs.format = request.ps.format = shader_cache.format;
   request.vs.spec_mask = vs_cached->spec_mask;
   profile::Timer load_time(profile::kDrawShaderLoad);
-  request.vs.bytes = LoadDxil(*vs_cached);
+  request.vs.bytes = LoadModule(*vs_cached);
   load_time.Stop();
-  if (!request.vs.bytes) guard("dxil-unreadable", shaders_record);
+  if (!request.vs.bytes) guard("vertex-shader-unavailable", shaders_record);
   // Indices: the bound index buffer, or start .. start + count - 1 for DrawVertices.
   // The draw's range of the index buffer is a buffer entry (BindBuffer):
   // bound on the GPU once hosted, read inline while on probation.

@@ -127,10 +127,11 @@ bool DescribeEntry(size_t i, PipelineDesc& desc, uint32_t& linked, bool& variant
   auto vs = shader_cache.by_name.find(entry.vs);
   if (vs == shader_cache.by_name.end()) return unresolved("vs-not-in-cache");
   desc.vs.key = entry.vs;
+  desc.vs.format = desc.ps.format = shader_cache.format;
   desc.vs.spec_mask = vs->second->spec_mask;
   desc.ps.key = entry.ps;
-  desc.vs.bytes = LoadDxil(*vs->second);
-  if (!desc.vs.bytes) return unresolved("vs-dxil-unreadable");
+  desc.vs.bytes = LoadModule(*vs->second);
+  if (!desc.vs.bytes) return unresolved("vs-module-unreadable");
   std::string variant_key;  // The pixel shader key the draw asks for now, when the list holds the other.
   linked = 0;
   variant = false;
@@ -154,7 +155,7 @@ bool DescribeEntry(size_t i, PipelineDesc& desc, uint32_t& linked, bool& variant
     if (linked != spec) variant_key = fmt::format("{}+spec{}", name, linked);
     std::string error;
     desc.ps.bytes = LoadShader(*ps->second, linked, error);
-    if (!desc.ps.bytes) return unresolved("ps-dxil-unavailable");
+    if (!desc.ps.bytes) return unresolved("ps-module-unavailable");
     desc.ps.spec_mask = ps->second->spec_mask;
     desc.ps.spec_value = linked;
   }

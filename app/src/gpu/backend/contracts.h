@@ -299,6 +299,10 @@ struct PresentMode {
 
 // The host graphics API of the engine, fixed for its life (backend.h).
 enum class GraphicsApi : uint8_t { kD3D12, kVulkan };
+// The binary format of the shaders the backend of an API takes.
+constexpr ShaderFormat ShaderFormatOf(GraphicsApi api) {
+  return api == GraphicsApi::kVulkan ? ShaderFormat::kSpirv : ShaderFormat::kDxil;
+}
 
 // How the engine renders the title's targets, fixed for its life:
 // the internal resolution scale, and the sample count of the targets the title

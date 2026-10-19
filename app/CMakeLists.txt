@@ -55,7 +55,7 @@ if(NARUTORISE_NATIVE_RENDERER_BOOTSTRAP)
          src/gpu/d3d/hooks.cpp src/gpu/d3d/device.cpp src/gpu/d3d/resources.cpp
          src/gpu/d3d/pass.cpp src/gpu/d3d/draw.cpp src/gpu/d3d/state.cpp
          src/gpu/d3d/present.cpp src/gpu/d3d/frame.cpp src/gpu/d3d/close.cpp src/gpu/d3d/query.cpp
-         src/gpu/shaders/shaders.cpp src/gpu/shaders/pipelines.cpp
+         src/gpu/shaders/shaders.cpp src/gpu/shaders/package.cpp src/gpu/shaders/pipelines.cpp
          src/gpu/textures/textures.cpp src/gpu/textures/write_watch.cpp src/gpu/textures/formats.cpp
          src/gpu/textures/layout.cpp
          src/gpu/buffers/buffers.cpp src/gpu/buffers/vertex_layout.cpp
@@ -90,9 +90,15 @@ if(NARUTORISE_NATIVE_RENDERER_BOOTSTRAP)
     rexglue_setup_target(narutorise GPU_PLUGINS xenos)
     target_link_libraries(narutorise PRIVATE native_renderer_plume)
     target_compile_definitions(narutorise PRIVATE NARUTORISE_NATIVE_RENDERER_BOOTSTRAP=1)
-    # The shader cache generated from the local game files (game/xeshader.sdb).
+    # The shader cache generated from the local game files (game/xeshader.sdb),
+    # with the SPIR-V of the shaders and of the backend's passes when the Vulkan
+    # backend is built.
     include(${CMAKE_CURRENT_SOURCE_DIR}/../tools/native-renderer/shader-cache.cmake)
-    narutorise_shader_cache(narutorise src/gpu/shaders/shader_cache_data.cpp)
+    set(_narutorise_shader_spirv)
+    if(NARUTORISE_NATIVE_VULKAN)
+        set(_narutorise_shader_spirv SPIRV PASSES src/gpu/backend)
+    endif()
+    narutorise_shader_cache(narutorise src/gpu/shaders/shader_cache_data.cpp ${_narutorise_shader_spirv})
     if(NARUTORISE_NATIVE_VULKAN)
         # Host test of the Vulkan device (no guest code): clear, upload, copy and
         # readback, with a bounded wait on the submission.
@@ -100,6 +106,15 @@ if(NARUTORISE_NATIVE_RENDERER_BOOTSTRAP)
         target_include_directories(native_vulkan_transfer_test PRIVATE src)
         target_link_libraries(native_vulkan_transfer_test PRIVATE native_renderer_plume_vulkan)
         target_compile_definitions(native_vulkan_transfer_test PRIVATE _CRT_SECURE_NO_WARNINGS)
+        # Host test of the embedded shader packages (no guest code, no GPU): every
+        # SPIR-V module decodes to the SHA-256 of its index line.
+        add_executable(native_shader_package_test src/gpu/shaders/tests/package_test.cpp
+                       src/gpu/shaders/package.cpp src/gpu/shaders/shader_cache_data.cpp)
+        target_include_directories(native_shader_package_test PRIVATE src)
+        target_link_libraries(native_shader_package_test PRIVATE narutorise_smolv fmt::fmt)
+        target_compile_definitions(native_shader_package_test PRIVATE NARUTORISE_SHADER_CACHE_SPIRV=1 NOMINMAX
+                                   WIN32_LEAN_AND_MEAN)
+        add_dependencies(native_shader_package_test narutorise_native_shader_cache)
     endif()
 else()
     rexglue_setup_target(narutorise GPU_PLUGINS xenos)
