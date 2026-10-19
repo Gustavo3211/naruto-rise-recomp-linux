@@ -46,8 +46,10 @@ if(NARUTORISE_NATIVE_RENDERER_BOOTSTRAP)
          src/gpu/host/kernel_modules.cpp src/gpu/host/journal.cpp src/gpu/host/stop.cpp src/gpu/host/engines.cpp
          src/gpu/host/graphics.cpp src/gpu/host/frame_completion.cpp src/gpu/host/guest_hooks.cpp src/gpu/host/exports.cpp
          src/gpu/host/title_loading.cpp
-         # The backend: the D3D12 engine, its pipeline set, its dispatcher and the title-thread witness.
-         src/gpu/backend/engine.cpp src/gpu/backend/pipeline_set.cpp src/gpu/backend/dispatcher.cpp
+         # The backend: the engine and its D3D12 backend, the session's failure channel, the
+         # pipeline identities and set, the dispatcher and the title-thread witness.
+         src/gpu/backend/engine.cpp src/gpu/backend/d3d12/backend.cpp src/gpu/backend/failure_channel.cpp
+         src/gpu/backend/pipeline_keys.cpp src/gpu/backend/pipeline_set.cpp src/gpu/backend/dispatcher.cpp
          src/gpu/backend/title_witness.cpp
          # The D3D boundary of the native renderer, one unit per responsibility.
          src/gpu/d3d/hooks.cpp src/gpu/d3d/device.cpp src/gpu/d3d/resources.cpp

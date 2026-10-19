@@ -8,6 +8,7 @@
 // region are refused. Usage:
 // native_engine_depth_resolve_test <new output.jsonl>
 #include "gpu/backend/engine.h"
+#include "gpu/backend/tests/test_backend.h"
 #include <cstdlib>
 #include <cstring>
 #include <filesystem>
@@ -41,7 +42,7 @@ int main(int argc, char** argv) {
   };
   Engine engine;
   std::string evidence;
-  const bool ready = engine.Initialize(evidence);
+  const bool ready = engine.Initialize(evidence, TestRenderMode());
   line("initialize", ready, evidence);
   if (!ready) { engine.Shutdown(evidence); return 4; }
 

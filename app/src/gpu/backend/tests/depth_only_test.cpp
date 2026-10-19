@@ -11,6 +11,7 @@
 // identities of a created one is taken by the draw that needs it.
 // Usage: native_engine_depth_only_test <new output.jsonl>
 #include "gpu/backend/engine.h"
+#include "gpu/backend/tests/test_backend.h"
 #include "gpu/backend/depth_resolve.h"
 #include <cstdlib>
 #include <cstring>
@@ -42,7 +43,7 @@ int main(int argc, char** argv) {
   };
   Engine engine;
   std::string evidence;
-  const bool ready = engine.Initialize(evidence);
+  const bool ready = engine.Initialize(evidence, TestRenderMode());
   line("initialize", ready, evidence);
   if (!ready) { engine.Shutdown(evidence); return 4; }
 
@@ -82,16 +83,16 @@ int main(int argc, char** argv) {
       kDepthResolveVs, kDepthResolveVs + sizeof(kDepthResolveVs));
   auto draw_request = [&](uint32_t depth_key, uint32_t color_key) {
     DrawRequest r;
-    r.vs_key = "depth-only-test-vs";
-    r.ps_key = "depth-only";
-    r.vs_dxil = vs;
+    r.vs.key = "depth-only-test-vs";
+    r.ps.key = "depth-only";
+    r.vs.bytes = vs;
     r.depth_only = true;
     r.elements = std::make_shared<const std::vector<VertexElement>>(
-        std::vector<VertexElement>{{"POSITION", 0, 6 /* DXGI_FORMAT_R32G32B32_FLOAT */, 0, 0}});
+        std::vector<VertexElement>{{"POSITION", 0, VertexFormat::kR32G32B32Float, 0, 0}});
     r.streams.push_back({std::vector<uint8_t>(36), 12});
     r.indices = {0, 0, 1, 0, 2, 0};
     r.index_count = 3;
-    r.topology = 4;  // D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST
+    r.topology = Topology::kTriangleList;
     r.depth_key = depth_key;
     r.color_key = color_key;
     r.depth_enable = r.depth_write = true;
@@ -114,7 +115,7 @@ int main(int argc, char** argv) {
     const auto descs = engine.PipelineDescs();
     line("prepare-pipelines", descs.size() == 2 && engine.PreparePipelines(evidence), evidence);
     PipelineDesc desc = descs.empty() ? PipelineDesc{} : descs.front();
-    desc.vs_dxil = vs;
+    desc.vs.bytes = vs;
     desc.state[4] = 3;  // Xenos LEQUAL
     bool present = true, precompiled = false;
     std::string pool;
@@ -189,7 +190,7 @@ int main(int argc, char** argv) {
   // Refused: a PS in a depth-only draw, a depth-only draw without depth and a
   // normal draw without PS.
   auto with_ps = draw_request(depth4.key, 0);
-  with_ps.ps_dxil = vs;
+  with_ps.ps.bytes = vs;
   line("depth-only-with-ps-refused", !engine.DrawIndexed(with_ps, fence, evidence) &&
        Has(evidence, "native-draw-shaders"), evidence);
   auto without_depth = draw_request(depth4.key, 0);

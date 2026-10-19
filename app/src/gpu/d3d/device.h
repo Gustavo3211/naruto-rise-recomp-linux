@@ -3,6 +3,7 @@
 // The guest device owner of the D3D boundary (DeviceOwner below).
 #include "gpu/d3d/d3d.h"
 #include "gpu/backend/dispatcher.h"
+#include "gpu/backend/failure_channel.h"
 #include "gpu/d3d/init/initializer_transaction.h"
 #include "gpu/d3d/init/initializer_abi.h"
 #include "gpu/d3d/init/video_transaction.h"
@@ -495,17 +496,25 @@ class DeviceOwner final {
     return true;
   }
   // The lot of this frame fence completed on the own queue: the frame fence
-  // becomes the completed value. Frame ends are published in order.
-  bool PublishFrame(uint32_t fence) {
+  // becomes the completed value. Frame ends are published in order. The store
+  // is authorized by the session's failure channel inside the fence lock (the
+  // lock order fence lock, then channel: the Swap holds the fence lock while it
+  // posts the lot close, which can wait for the owner).
+  FramePublication PublishFrame(uint32_t fence, FailureChannel& failures) {
     std::lock_guard lock(fence_mutex_);
     uint32_t counter = 0, completed = 0;
     if (!live_.load(std::memory_order_acquire) || !writeback_ || gates_.empty() || gates_.front() != fence ||
-        !Word(10908, counter) || !GuestWord(writeback_, completed)) return false;
-    gates_.pop_front();
-    if (!GuestStore(writeback_, Later(counter, fence, completed))) return false;
+        !Word(10908, counter) || !GuestWord(writeback_, completed)) return FramePublication::kFailed;
+    bool stored = false;
+    if (!failures.Authorize([&] {
+          gates_.pop_front();
+          stored = GuestStore(writeback_, Later(counter, fence, completed));
+        }))
+      return FramePublication::kRefused;
+    if (!stored) return FramePublication::kFailed;
     ++frame_publications_;
     fence_cv_.notify_all();
-    return true;
+    return FramePublication::kPublished;
   }
   std::string FenceSummary() {
     std::lock_guard lock(fence_mutex_);

@@ -226,5 +226,7 @@ bool RequestStop(std::string_view reason, int code) {
   host::Record("native-d3d-stop-request", fmt::format("\"reason\":\"{}\",\"code\":{}", reason, code));
   return true;
 }
-bool PublishFrameFence(uint32_t fence) { return device_owner && device_owner->PublishFrame(fence); }
+FramePublication PublishFrameFence(uint32_t fence, FailureChannel& failures) {
+  return device_owner ? device_owner->PublishFrame(fence, failures) : FramePublication::kFailed;
+}
 }  // namespace gpu
