@@ -8,6 +8,7 @@
 #include "gpu/backend/failure_channel.h"
 
 #include <fmt/format.h>
+#include <fmt/ranges.h>
 
 namespace gpu {
 namespace {
@@ -39,6 +40,9 @@ bool Engine::Initialize(std::string& evidence, const RenderMode& mode) {
   if (!backend_) {
     api_ = mode.api;
     if (mode.api == GraphicsApi::kD3D12) backend_ = CreateD3d12Backend(failures_);
+#if defined(NARUTORISE_NATIVE_VULKAN)
+    if (mode.api == GraphicsApi::kVulkan) backend_ = CreateVulkanBackend(failures_);
+#endif
     if (!backend_) {
       evidence = fmt::format("{{\"operation\":\"native-backend-unavailable\",\"api\":\"{}\","
                              "\"readiness_criteria_met\":false}}", ApiName(mode.api));
@@ -125,8 +129,42 @@ bool Engine::ReleaseTexture(uint32_t key, std::string& evidence) {
 bool Engine::ReleaseSampled(uint32_t address, std::string& evidence) {
   return backend_ ? backend_->ReleaseSampled(address, evidence) : NoBackend(evidence);
 }
+// The backend's own releases, then its WaitIdle: a failure retained before
+// refuses the operations of the facade, not these.
 bool Engine::ReleaseRemaining(std::string& evidence) {
-  return backend_ ? backend_->ReleaseRemaining(evidence) : NoBackend(evidence);
+  if (!backend_) return NoBackend(evidence);
+  ResourceKeys keys;
+  if (!backend_->LiveResources(keys, evidence)) return false;
+  std::string ignored;
+  for (uint32_t key : keys.surfaces)
+    if (!backend_->DestroySurface(key, ignored)) {
+      evidence = fmt::format("{{\"released\":false,\"surface\":{},\"engine\":{}}}", key, ignored);
+      return false;
+    }
+  for (uint32_t key : keys.textures)
+    if (!backend_->ReleaseTexture(key, ignored)) {
+      evidence = fmt::format("{{\"released\":false,\"texture\":{},\"engine\":{}}}", key, ignored);
+      return false;
+    }
+  // The sampled copies whose header the title did not destroy.
+  for (uint32_t address : keys.sampled)
+    if (!backend_->ReleaseSampled(address, ignored)) {
+      evidence = fmt::format("{{\"released\":false,\"sampled\":{},\"engine\":{}}}", address, ignored);
+      return false;
+    }
+  // The buffers of the draw layer.
+  for (uint64_t key : keys.buffers)
+    if (!backend_->ReleaseBuffer(key, ignored)) {
+      evidence = fmt::format("{{\"released\":false,\"buffer\":{},\"engine\":{}}}", key, ignored);
+      return false;
+    }
+  std::string idle;
+  const bool waited = backend_->WaitIdle(idle);
+  evidence = fmt::format("{{\"released\":{},\"surfaces\":[{}],\"textures\":[{}],\"sampled\":{},\"buffers\":{},"
+                         "\"idle\":{},\"counts\":{}}}", waited, fmt::join(keys.surfaces, ","),
+                         fmt::join(keys.textures, ","), keys.sampled.size(), keys.buffers.size(), idle,
+                         backend_->ResourceCounts());
+  return waited;
 }
 bool Engine::ResolveSurface(const ResolveRequest& request, uint64_t& fence, std::string& evidence) {
   if (Refused(evidence)) return false;
@@ -190,6 +228,12 @@ bool Engine::Latched() const { return failures_->Failed(); }
 #if defined(NATIVE_RENDERER_ENGINE_FAULT_TEST)
 bool Engine::SeedSampledForTest(uint32_t address, bool in_flight, std::string& evidence) {
   return backend_ ? backend_->SeedSampledForTest(address, in_flight, evidence) : NoBackend(evidence);
+}
+bool Engine::ReadBufferForTest(uint64_t key, std::vector<uint8_t>& bytes, std::string& evidence) {
+  return backend_ ? backend_->ReadBufferForTest(key, bytes, evidence) : NoBackend(evidence);
+}
+CompletionTestHooks* Engine::CompletionHooksForTest() {
+  return backend_ ? backend_->CompletionHooksForTest() : nullptr;
 }
 #endif
 }  // namespace gpu

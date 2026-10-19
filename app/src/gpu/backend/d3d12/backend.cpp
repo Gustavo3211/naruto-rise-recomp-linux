@@ -3,8 +3,10 @@
 // D3D12's own.
 #include "gpu/backend/backend.h"
 #include "gpu/backend/d3d12/formats.h"
+#include "gpu/backend/lifecycle.h"
 #include "gpu/backend/pipeline_keys.h"
 #include "gpu/backend/pipeline_set.h"
+#include "gpu/backend/regions.h"
 #include "gpu/common/hash.h"
 #include "gpu/common/title_loading.h"
 #include "gpu/d3d/init/initializer_services.h"
@@ -52,13 +54,6 @@ int debugLayerOption() {
     return std::string_view(text) == "1" ? 1 : -1;
   }();
   return value;
-}
-std::atomic<uint64_t> nextEngineEpoch{1};
-uint64_t allocateEngineEpoch() {
-  uint64_t epoch = nextEngineEpoch.load(std::memory_order_relaxed);
-  while (epoch != 0 && epoch != UINT64_MAX)
-    if (nextEngineEpoch.compare_exchange_weak(epoch, epoch + 1, std::memory_order_relaxed)) return epoch;
-  return 0;
 }
 // A persistent target accepts different clear colors. D3D12 warning 820 is
 // solely an optimized-clear performance diagnostic; retain it in the queue.
@@ -199,7 +194,7 @@ class Backend final : public gpu::Backend {
   std::string ResourceCounts() override;
   bool ReleaseTexture(uint32_t key, std::string& evidence) override;
   bool ReleaseSampled(uint32_t address, std::string& evidence) override;
-  bool ReleaseRemaining(std::string& evidence) override;
+  bool LiveResources(ResourceKeys& keys, std::string& evidence) override;
   bool ResolveSurface(const ResolveRequest& request, uint64_t& fence, std::string& evidence) override;
   bool DrawIndexed(const DrawRequest& request, uint64_t& fence, std::string& evidence) override;
   std::string PipelineList() override;
@@ -220,6 +215,7 @@ class Backend final : public gpu::Backend {
                    uint32_t& height, std::string& evidence) override;
 #if defined(NATIVE_RENDERER_ENGINE_FAULT_TEST)
   bool SeedSampledForTest(uint32_t address, bool in_flight, std::string& evidence) override;
+  bool ReadBufferForTest(uint64_t key, std::vector<uint8_t>& bytes, std::string& evidence) override;
 #endif
  private:
   // WaitIdle (close: the open batch is submitted first) and WaitSubmitted.
@@ -462,15 +458,9 @@ struct Backend::State {
   uint64_t operations = 0;
   std::unordered_map<uint32_t, Surface> surfaces;
   std::vector<Surface> retired_surfaces;  // Released, waiting for their fence.
-  // Guest pixels and sample counts to those of the own surfaces
-  // and resolve destinations; a surface keeps its description in the latter.
+  // Guest pixels and sample counts to those of the own surfaces and resolve
+  // destinations (RenderMode::Host); a surface keeps its description in the latter.
   RenderMode render_mode;
-  SurfaceDesc Host(SurfaceDesc desc) const {
-    desc.width = render_mode.scale.Width(desc.width);
-    desc.height = render_mode.scale.Height(desc.height);
-    desc.samples = render_mode.Samples(desc.samples);
-    return desc;
-  }
   // Presentation: own swapchain on the window, the final pass and two
   // stage slots holding the front buffer copied at the Swap until its flip.
   static constexpr uint32_t kMaxSwapBuffers = 3, kStageSlots = 2;
@@ -713,11 +703,8 @@ bool Backend::Initialize(std::string& evidence, const RenderMode& mode) {
   };
   if (state_->render) return fail("duplicate-native-initialization");
   if (debugLayerOption() < 0) return fail("native-debug-layer-option");
+  if (const char* reason = RenderModeError(mode)) return fail(reason);
   const ResolutionScale& scale = mode.scale;
-  if (!(scale.x >= 1.0f && scale.x <= 4.0f && scale.y >= 1.0f && scale.y <= 4.0f))
-    return fail("native-resolution-scale");
-  if (mode.msaa_samples && mode.msaa_samples != 2 && mode.msaa_samples != 4 && mode.msaa_samples != 8)
-    return fail("native-msaa-samples");
   // Enable before Plume creates any device. Release our debug COM reference.
   HRESULT result = S_OK;
   if (debugLayerOption()) {
@@ -774,9 +761,7 @@ bool Backend::Initialize(std::string& evidence, const RenderMode& mode) {
     }
     return true;
   };
-  uint32_t& msaa = state_->render_mode.msaa_samples;
-  while (msaa > 2 && !msaa_supported(msaa)) msaa /= 2;
-  if (msaa == 2 && !msaa_supported(2)) msaa = 0;
+  state_->render_mode.msaa_samples = SupportedSamples(mode.msaa_samples, msaa_supported);
   state_->queue = state_->device->createCommandQueue(plume::RenderCommandListType::DIRECT);
   state_->fence = state_->device->createCommandFence();
   if (!state_->queue || !state_->fence) return fail("Plume-queue-fence");
@@ -834,7 +819,7 @@ bool Backend::Initialize(std::string& evidence, const RenderMode& mode) {
   }
   for (uint32_t i = 0; i < 256; ++i)
     state_->gamma[i] = state_->gamma[256 + i] = state_->gamma[512 + i] = (i * 1023 + 127) / 255;
-  state_->epoch = allocateEngineEpoch();
+  state_->epoch = AllocateEngineEpoch();
   if (state_->epoch == 0) return fail("native-owner-epoch-exhausted");
   state_->owner_thread = GetCurrentThreadId();
   state_->ready = true;
@@ -1014,26 +999,18 @@ bool Backend::VerifyFrontend(uint64_t generation, std::string& evidence) {
         state_->archived_clear_warnings, state_->pending_signal, static_cast<uint32_t>(removed));
     return false;
   }
-  evidence = fmt::format("{{\"session_generation\":{},\"engine_epoch\":{},\"owner_thread\":{},"
-      "\"invalidated_categories\":[\"shader\",\"resources\",\"constants\",\"raster\",\"blend\","
-      "\"depth-stencil\",\"viewport\",\"targets\"],\"interpolation\":\"centroid\","
-      "\"generated_parameter_slot\":0,\"flat_components\":0,\"pending_work\":0,"
-      "\"callback_pending\":false,\"interrupt_armed\":false,\"scratch_result_valid\":false,"
-      "\"configuration_blockers\":[\"shader-flow\",\"hardware-sequencer\",\"clip-enhancement\","
-      "\"performance-context\"],\"operations_admitted\":false,\"guest_completion\":false,"
-      "\"gpu_submission\":false,\"debug_messages\":0}}", generation, state_->epoch, GetCurrentThreadId());
+  evidence = FrontendReadyEvidence(generation, state_->epoch, GetCurrentThreadId());
   return true;
 }
 
 bool Backend::ReleaseFrontend(uint64_t generation, std::string& evidence) {
   if (!VerifyFrontend(generation, evidence) || !state_->frontend.Release(generation)) return false;
-  evidence = fmt::format("{{\"session_generation\":{},\"frontend_released\":true,"
-      "\"pending_work\":0,\"guest_completion\":false}}", generation);
+  evidence = FrontendReleasedEvidence(generation);
   return true;
 }
 
 bool Backend::CreateSurface(const SurfaceDesc& guest, std::string& evidence) {
-  const SurfaceDesc desc = state_->Host(guest);
+  const SurfaceDesc desc = state_->render_mode.Host(guest);
   auto fail = [&](const char* reason) {
     evidence = fmt::format("{{\"created\":false,\"reason\":\"{}\",\"key\":{}}}", reason, desc.key);
     return false;
@@ -1086,7 +1063,7 @@ bool Backend::EnsureSurface(const SurfaceDesc& desc, std::string& evidence) {
   auto it = state_->surfaces.find(desc.key);
   if (it != state_->surfaces.end()) {
     const auto& d = it->second.desc;
-    const SurfaceDesc host = state_->Host(desc);
+    const SurfaceDesc host = state_->render_mode.Host(desc);
     if (d.width == host.width && d.height == host.height && d.format == host.format && d.samples == host.samples) {
       evidence = fmt::format("{{\"ensured\":true,\"created\":false,\"key\":{}}}", desc.key);
       return true;
@@ -1169,15 +1146,10 @@ bool Backend::ClearSurfaces(const ClearRequest& request, uint64_t& fenceValue,
     surface.state = after;
   };
   auto clip = [&](const State::Surface& surface, D3D12_RECT& rect) {
-    const auto& k = state_->render_mode.scale;  // Guest edges.
-    rect = {k.X(request.left), k.Y(request.top), k.X(request.right), k.Y(request.bottom)};
-    if (rect.right <= rect.left || rect.bottom <= rect.top)
-      rect = {0, 0, LONG(surface.desc.width), LONG(surface.desc.height)};
-    rect.left = std::max<LONG>(rect.left, 0);
-    rect.top = std::max<LONG>(rect.top, 0);
-    rect.right = std::min<LONG>(rect.right, surface.desc.width);
-    rect.bottom = std::min<LONG>(rect.bottom, surface.desc.height);
-    return rect.right > rect.left && rect.bottom > rect.top;
+    HostRect host;
+    const bool covered = ClearRect(state_->render_mode.scale, request, surface.desc.width, surface.desc.height, host);
+    rect = {host.left, host.top, host.right, host.bottom};
+    return covered;
   };
   for (auto* surface : colors) {
     D3D12_RECT rect{};
@@ -2126,50 +2098,20 @@ std::string Backend::ResourceCounts() {
                      state_->buffer_blocks_used);
 }
 
-bool Backend::ReleaseRemaining(std::string& evidence) {
+bool Backend::LiveResources(ResourceKeys& keys, std::string& evidence) {
   if (!state_->ready || state_->owner_thread != GetCurrentThreadId()) {
     evidence = "{\"released\":false,\"reason\":\"native-release-remaining-owner\"}";
     return false;
   }
-  std::vector<uint32_t> surfaces, textures, sampled;
-  std::vector<uint64_t> buffers;
-  for (const auto& [key, surface] : state_->surfaces) surfaces.push_back(key);
-  for (const auto& [key, texture] : state_->textures) textures.push_back(key);
-  for (const auto& [address, copy] : state_->sampled) sampled.push_back(address);
-  for (const auto& [key, buffer] : state_->buffers) buffers.push_back(key);
-  std::sort(buffers.begin(), buffers.end());
-  std::sort(surfaces.begin(), surfaces.end());
-  std::sort(textures.begin(), textures.end());
-  std::sort(sampled.begin(), sampled.end());
-  std::string ignored;
-  for (uint32_t key : surfaces)
-    if (!DestroySurface(key, ignored)) {
-      evidence = fmt::format("{{\"released\":false,\"surface\":{},\"engine\":{}}}", key, ignored);
-      return false;
-    }
-  for (uint32_t key : textures)
-    if (!ReleaseTexture(key, ignored)) {
-      evidence = fmt::format("{{\"released\":false,\"texture\":{},\"engine\":{}}}", key, ignored);
-      return false;
-    }
-  // The sampled copies whose header the title did not destroy.
-  for (uint32_t address : sampled)
-    if (!ReleaseSampled(address, ignored)) {
-      evidence = fmt::format("{{\"released\":false,\"sampled\":{},\"engine\":{}}}", address, ignored);
-      return false;
-    }
-  // The buffers of the draw layer.
-  for (uint64_t key : buffers)
-    if (!ReleaseBuffer(key, ignored)) {
-      evidence = fmt::format("{{\"released\":false,\"buffer\":{},\"engine\":{}}}", key, ignored);
-      return false;
-    }
-  std::string idle;
-  const bool waited = WaitIdle(idle);
-  evidence = fmt::format("{{\"released\":{},\"surfaces\":[{}],\"textures\":[{}],\"sampled\":{},\"buffers\":{},"
-                         "\"idle\":{},\"counts\":{}}}", waited, fmt::join(surfaces, ","), fmt::join(textures, ","),
-                         sampled.size(), buffers.size(), idle, ResourceCounts());
-  return waited;
+  for (const auto& [key, surface] : state_->surfaces) keys.surfaces.push_back(key);
+  for (const auto& [key, texture] : state_->textures) keys.textures.push_back(key);
+  for (const auto& [address, copy] : state_->sampled) keys.sampled.push_back(address);
+  for (const auto& [key, buffer] : state_->buffers) keys.buffers.push_back(key);
+  std::sort(keys.buffers.begin(), keys.buffers.end());
+  std::sort(keys.surfaces.begin(), keys.surfaces.end());
+  std::sort(keys.textures.begin(), keys.textures.end());
+  std::sort(keys.sampled.begin(), keys.sampled.end());
+  return true;
 }
 
 bool Backend::ReleaseTexture(uint32_t key, std::string& evidence) {
@@ -2250,11 +2192,8 @@ bool Backend::ResolveSurface(const ResolveRequest& request, uint64_t& fenceValue
   const bool depth = source.desc.format == SurfaceFormat::DepthStencil;
   if (!request.dest_key || !request.dest_width || !request.dest_height) return fail("native-resolve-destination");
   // The request is in guest pixels; the destination is as scaled as the source.
-  const auto& k = state_->render_mode.scale;
-  const uint32_t dest_width = k.Width(request.dest_width), dest_height = k.Height(request.dest_height);
-  const uint32_t left = k.X(int32_t(request.left)), top = k.Y(int32_t(request.top));
-  const uint32_t right = k.X(int32_t(request.right)), bottom = k.Y(int32_t(request.bottom));
-  const uint32_t dest_x = k.X(int32_t(request.dest_x)), dest_y = k.Y(int32_t(request.dest_y));
+  const HostResolve host = ResolveInHost(state_->render_mode.scale, request);
+  const uint32_t dest_width = host.dest_width, dest_height = host.dest_height;
   // One sample of an MSAA color source goes through the pass, as the depth
   // does; ResolveSubresource would average it with the others.
   const bool sampled = !depth && source.desc.samples > 1 && request.sample >= 0;
@@ -2283,12 +2222,7 @@ bool Backend::ResolveSurface(const ResolveRequest& request, uint64_t& fenceValue
   const bool same_size = source.desc.width == dest.width && source.desc.height == dest.height;
   // The deferred cases (content left undefined with success) are refused:
   // the draw layer stops in a guard before reaching them.
-  if (depth && (!same_size || request.has_rect || request.dest_x || request.dest_y))
-    return fail("native-depth-resolve-region-uncovered");
-  if (depth && (request.sample < -1 || request.sample >= int32_t(source.desc.samples)))
-    return fail("native-depth-resolve-sample-uncovered");
-  if (!depth && source.desc.samples > 1 && (!same_size || request.has_rect))
-    return fail("native-resolve-msaa-region-uncovered");
+  if (const char* uncovered = ResolveUncovered(request, depth, source.desc.samples, same_size)) return fail(uncovered);
   // Recorded into the open batch, complete with its fence.
   HRESULT hr = S_OK;
   const char* batch_reason = nullptr;
@@ -2424,19 +2358,14 @@ bool Backend::ResolveSurface(const ResolveRequest& request, uint64_t& fenceValue
   } else if (source.desc.samples == 1) {
     barrier(src, source.state, D3D12_RESOURCE_STATE_COPY_SOURCE);
     barrier(dst, dest.state, D3D12_RESOURCE_STATE_COPY_DEST);
-    D3D12_BOX box{};
-    box.left = request.has_rect ? left : 0;
-    box.top = request.has_rect ? top : 0;
-    box.right = std::min<UINT>(request.has_rect ? right : source.desc.width, source.desc.width);
-    box.bottom = std::min<UINT>(request.has_rect ? bottom : source.desc.height, source.desc.height);
-    box.back = 1;
-    box.right = std::min<UINT>(box.right, box.left + dest.width - std::min<UINT>(dest_x, dest.width));
-    box.bottom = std::min<UINT>(box.bottom, box.top + dest.height - std::min<UINT>(dest_y, dest.height));
-    if (box.right <= box.left || box.bottom <= box.top) return fail("native-resolve-empty-region");
+    HostBox region;
+    if (!CopyBox(host, request.has_rect, source.desc.width, source.desc.height, dest.width, dest.height, region))
+      return fail("native-resolve-empty-region");
+    const D3D12_BOX box{region.left, region.top, 0, region.right, region.bottom, 1};
     D3D12_TEXTURE_COPY_LOCATION to{}, from{};
     to.pResource = dst; to.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
     from.pResource = src; from.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
-    commands->CopyTextureRegion(&to, dest_x, dest_y, 0, &from, &box);
+    commands->CopyTextureRegion(&to, host.dest_x, host.dest_y, 0, &from, &box);
   } else {
     return fail("native-resolve-msaa-region-uncovered");  // Refused above, kept as a backstop.
   }
@@ -3843,6 +3772,71 @@ bool Backend::SeedSampledForTest(uint32_t address, bool in_flight, std::string& 
   s.last_use_fence = in_flight ? state_->batch.fence : 0;
   evidence = fmt::format("{{\"seeded\":true,\"address\":{},\"view\":{},\"last_use_fence\":{},\"counts\":{}}}", address,
                          s.view, s.last_use_fence, ResourceCounts());
+  return true;
+}
+
+bool Backend::ReadBufferForTest(uint64_t key, std::vector<uint8_t>& bytes, std::string& evidence) {
+  bytes.clear();
+  auto fail = [&](const char* reason, HRESULT hr = E_FAIL) {
+    evidence = fmt::format("{{\"read\":false,\"reason\":\"{}\",\"key\":{},\"hresult\":{}}}", reason, key,
+                           static_cast<uint32_t>(hr));
+    return false;
+  };
+  if (!state_->ready || state_->owner_thread != GetCurrentThreadId()) return fail("native-read-owner-or-state");
+  const char* batch_reason = nullptr;
+  HRESULT hr = S_OK;
+  if (!state_->CloseBatch(batch_reason, hr)) return fail(batch_reason, hr);
+  auto it = state_->buffers.find(key);
+  if (it == state_->buffers.end()) return fail("native-read-buffer-unknown");
+  auto& b = it->second;
+  auto* device = static_cast<plume::D3D12Device*>(state_->device.get());
+  auto* fence = static_cast<plume::D3D12CommandFence*>(state_->fence.get());
+  D3D12_HEAP_PROPERTIES heap{};
+  heap.Type = D3D12_HEAP_TYPE_READBACK;
+  heap.CreationNodeMask = heap.VisibleNodeMask = 1;
+  D3D12_RESOURCE_DESC buffer{};
+  buffer.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+  buffer.Width = b.bytes;
+  buffer.Height = buffer.DepthOrArraySize = buffer.MipLevels = 1;
+  buffer.SampleDesc.Count = 1;
+  buffer.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+  State::Submission submission;
+  if (FAILED(hr = device->d3d->CreateCommittedResource(&heap, D3D12_HEAP_FLAG_NONE, &buffer,
+                                                       D3D12_RESOURCE_STATE_COPY_DEST, nullptr,
+                                                       IID_PPV_ARGS(&submission.upload))) ||
+      FAILED(hr = device->d3d->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT,
+                                                      IID_PPV_ARGS(&submission.allocator))) ||
+      FAILED(hr = device->d3d->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, submission.allocator.Get(),
+                                                 nullptr, IID_PPV_ARGS(&submission.commands))))
+    return fail("native-read-buffer-objects", hr);
+  if (b.state != D3D12_RESOURCE_STATE_COPY_SOURCE) {
+    D3D12_RESOURCE_BARRIER barrier{};
+    barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+    barrier.Transition.pResource = b.resource.Get();
+    barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+    barrier.Transition.StateBefore = b.state;
+    barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_COPY_SOURCE;
+    submission.commands->ResourceBarrier(1, &barrier);
+    b.state = D3D12_RESOURCE_STATE_COPY_SOURCE;
+  }
+  submission.commands->CopyBufferRegion(submission.upload.Get(), 0, b.resource.Get(), 0, b.bytes);
+  if (FAILED(hr = submission.commands->Close())) return fail("native-read-close", hr);
+  submission.fence = fence->fenceValue;
+  if (!state_->Submit(submission.commands.Get(), submission.fence, hr)) return fail("native-read-signal", hr);
+  state_->pending_signal = submission.fence;
+  ++fence->fenceValue;
+  b.last_use_fence = submission.fence;
+  auto readback = submission.upload;
+  state_->submissions.push_back(std::move(submission));
+  std::string idle;
+  if (!WaitIdle(idle)) return fail("native-read-wait");
+  uint8_t* mapped = nullptr;
+  const D3D12_RANGE range{0, SIZE_T(b.bytes)};
+  if (FAILED(hr = readback->Map(0, &range, reinterpret_cast<void**>(&mapped)))) return fail("native-read-map", hr);
+  bytes.assign(mapped, mapped + b.bytes);
+  const D3D12_RANGE none{0, 0};
+  readback->Unmap(0, &none);
+  evidence = fmt::format("{{\"read\":true,\"key\":{},\"bytes\":{}}}", key, b.bytes);
   return true;
 }
 #endif

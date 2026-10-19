@@ -9,6 +9,7 @@
 
 namespace gpu {
 class Backend;
+class CompletionTestHooks;
 class FailureChannel;
 
 // Host engine owned for the entire accepted guest segment. No guest commands,
@@ -154,6 +155,12 @@ class Engine final {
   // Host test: a sampled copy at address (a 4 x 4 RGBA8 resource with an
   // SRV slot), as a draw leaves it, last used by the open batch when in_flight.
   bool SeedSampledForTest(uint32_t address, bool in_flight, std::string& evidence);
+  // Host test: the bytes of a buffer of the draw layer (UploadBuffer), read
+  // back after every submitted operation. Waits for the copy.
+  bool ReadBufferForTest(uint64_t key, std::vector<uint8_t>& bytes, std::string& evidence);
+  // Host test: the hooks of the backend's completion service (backend.h), or
+  // null when the backend has none.
+  CompletionTestHooks* CompletionHooksForTest();
 #endif
  private:
   // The refusal of a GPU operation after a retained failure.

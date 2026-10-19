@@ -8,8 +8,8 @@
 // variants linked in the build. The SPIR-V package (builds with the Vulkan
 // backend) has the module of each shader and of each pass (presentation,
 // resolves, FXAA and the SDK's output effects) encoded by smol-v, and the
-// manifest of the build; its index carries the contract, a line per pass and
-// the SHA-256 of each decoded module. A session unpacks only the package of
+// manifest of the build; its index carries the contract with its requirements
+// and layouts, a line per pass and the SHA-256 of each decoded module. A session unpacks only the package of
 // its API.
 #include <cstddef>
 #include <cstdint>
@@ -35,6 +35,10 @@ struct ShaderPackage {
 // Unpacks the embedded package of the format. False with error naming the
 // failed check; "embedded-format-absent" when the build has no package of it.
 bool UnpackShaderPackage(ShaderFormat format, ShaderPackage& package, std::string& error);
+// The embedded package of the format, unpacked at the first call and kept for
+// the process (the Vulkan backend's contract and passes); null with the error
+// of that unpack when it failed.
+const ShaderPackage* EmbeddedShaderPackage(ShaderFormat format, std::string& error);
 // A module as the backend takes it: the DXIL as stored, the SPIR-V decoded
 // from smol-v. Empty when it does not decode.
 std::vector<uint8_t> DecodeShaderModule(const ShaderPackage& package, std::span<const uint8_t> stored);

@@ -88,10 +88,45 @@ enum class TextureFormat : uint32_t {
   kBC5Unorm = 83,
   kB5G6R5Unorm = 85,
 };
+// Every texture format of the contract.
+inline constexpr TextureFormat kTextureFormats[] = {
+    TextureFormat::kR32G32B32A32Float, TextureFormat::kR16G16B16A16Float, TextureFormat::kR32G32Float,
+    TextureFormat::kR8G8B8A8Unorm,     TextureFormat::kR32Float,          TextureFormat::kR8G8Unorm,
+    TextureFormat::kR8Unorm,           TextureFormat::kBC1Unorm,          TextureFormat::kBC3Unorm,
+    TextureFormat::kBC5Unorm,          TextureFormat::kB5G6R5Unorm};
 // A format of 4 x 4 texel blocks.
 constexpr bool IsBlockCompressed(TextureFormat format) {
   return format == TextureFormat::kBC1Unorm || format == TextureFormat::kBC3Unorm ||
          format == TextureFormat::kBC5Unorm;
+}
+// The bytes of one texel, or of one 4 x 4 block of the block formats.
+constexpr uint32_t BlockBytes(TextureFormat format) {
+  switch (format) {
+    case TextureFormat::kR32G32B32A32Float: return 16;
+    case TextureFormat::kR16G16B16A16Float:
+    case TextureFormat::kR32G32Float:
+    case TextureFormat::kBC1Unorm: return 8;
+    case TextureFormat::kR8G8B8A8Unorm:
+    case TextureFormat::kR32Float: return 4;
+    case TextureFormat::kR8G8Unorm:
+    case TextureFormat::kB5G6R5Unorm: return 2;
+    case TextureFormat::kR8Unorm: return 1;
+    case TextureFormat::kBC3Unorm:
+    case TextureFormat::kBC5Unorm: return 16;
+    case TextureFormat::kUnknown: break;
+  }
+  return 0;
+}
+
+// The rows of one level as the requests carry them (DrawTexture::data): packed
+// rows of texels, or of 4 x 4 blocks for the block formats.
+struct LevelRows {
+  uint32_t rows = 0, row_bytes = 0;
+};
+constexpr LevelRows RowsOfLevel(TextureFormat format, uint32_t width, uint32_t height, uint32_t level) {
+  const uint32_t w = width >> level ? width >> level : 1, h = height >> level ? height >> level : 1;
+  if (IsBlockCompressed(format)) return {(h + 3) / 4, (w + 3) / 4 * BlockBytes(format)};
+  return {h, w * BlockBytes(format)};
 }
 
 // One own indexed draw (D3DDevice_DrawIndexedVertices semantics).
@@ -317,6 +352,13 @@ struct RenderMode {
   std::string device;
   GraphicsApi api = GraphicsApi::kD3D12;
   uint32_t Samples(uint32_t guest) const { return guest > 1 && msaa_samples ? msaa_samples : guest; }
+  // A surface or resolve destination in guest pixels and samples, as the engine creates it.
+  SurfaceDesc Host(SurfaceDesc desc) const {
+    desc.width = scale.Width(desc.width);
+    desc.height = scale.Height(desc.height);
+    desc.samples = Samples(desc.samples);
+    return desc;
+  }
 };
 
 // The outcome of a backend operation that the common code schedules (the

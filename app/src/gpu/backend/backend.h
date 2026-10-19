@@ -1,8 +1,8 @@
 // One host graphics API under the engine: the engine (engine.h) selects a
 // backend at Initialize and runs every operation on it. The operations, their
 // threads and their evidence are those of engine.h; a backend keeps the API's
-// own resources, commands and completion. The backends are backend/d3d12 and,
-// once it exists, backend/vulkan.
+// own resources, commands and completion. The backends are backend/d3d12 and
+// backend/vulkan.
 //
 // The engine refuses every GPU operation once the session's failure channel
 // holds a failure (failure_channel.h). A backend submits its command lists
@@ -19,6 +19,29 @@
 #include "gpu/backend/contracts.h"
 
 namespace gpu {
+
+#if defined(NATIVE_RENDERER_ENGINE_FAULT_TEST)
+// Host tests of a backend's completion service (the Vulkan one): its next
+// submissions held on the GPU until released, a result injected into its next
+// wait, a shorter deadline, and the count of its submissions.
+class CompletionTestHooks {
+ public:
+  virtual ~CompletionTestHooks() = default;
+  // Owner: the submissions from now on wait on the GPU until the release
+  // (any thread). False when the device cannot hold them.
+  virtual bool HoldSubmissions(std::string& evidence) = 0;
+  virtual bool ReleaseSubmissions(std::string& evidence) = 0;
+  virtual void InjectResult(int32_t result) = 0;
+  virtual void SetDeadline(uint32_t milliseconds) = 0;
+  virtual uint64_t Submissions() const = 0;
+};
+#endif
+
+// The keys of a backend's live own resources, each list sorted.
+struct ResourceKeys {
+  std::vector<uint32_t> surfaces, textures, sampled;
+  std::vector<uint64_t> buffers;
+};
 
 class Backend {
  public:
@@ -48,7 +71,8 @@ class Backend {
   virtual std::string ResourceCounts() = 0;
   virtual bool ReleaseTexture(uint32_t key, std::string& evidence) = 0;
   virtual bool ReleaseSampled(uint32_t address, std::string& evidence) = 0;
-  virtual bool ReleaseRemaining(std::string& evidence) = 0;
+  // The resources Engine::ReleaseRemaining releases; refused off the owner thread.
+  virtual bool LiveResources(ResourceKeys& keys, std::string& evidence) = 0;
   virtual bool ResolveSurface(const ResolveRequest& request, uint64_t& fence, std::string& evidence) = 0;
   virtual bool DrawIndexed(const DrawRequest& request, uint64_t& fence, std::string& evidence) = 0;
   virtual std::string PipelineList() = 0;
@@ -69,10 +93,15 @@ class Backend {
                            uint32_t& height, std::string& evidence) = 0;
 #if defined(NATIVE_RENDERER_ENGINE_FAULT_TEST)
   virtual bool SeedSampledForTest(uint32_t address, bool in_flight, std::string& evidence) = 0;
+  virtual bool ReadBufferForTest(uint64_t key, std::vector<uint8_t>& bytes, std::string& evidence) = 0;
+  // The hooks of the backend's completion service, when it has one.
+  virtual CompletionTestHooks* CompletionHooksForTest() { return nullptr; }
 #endif
 };
 
-// The backends compiled into the app, each bound to the session's failure channel.
+// The backends compiled into the app, each bound to the session's failure
+// channel. The Vulkan one exists in builds with NARUTORISE_NATIVE_VULKAN.
 std::unique_ptr<Backend> CreateD3d12Backend(std::shared_ptr<FailureChannel> failures);
+std::unique_ptr<Backend> CreateVulkanBackend(std::shared_ptr<FailureChannel> failures);
 
 }  // namespace gpu

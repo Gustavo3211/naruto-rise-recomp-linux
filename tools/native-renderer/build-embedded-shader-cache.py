@@ -17,13 +17,18 @@ kind; u32 name bytes; u32 offset into the blob area; u32 size; the name padded t
 then the blob area.
 - DXIL, version 2: kind 0 the DXIL of a shader, 2 a variant named <name>+spec<value>.
   Version 1 had kind 1, the lib_6_3 libraries the renderer linked at run time.
-- SPIR-V, version 4: kind 3 the module of a shader encoded by smol-v (lossless,
+- SPIR-V, version 5: kind 3 the module of a shader encoded by smol-v (lossless,
   smolv-encode), 4 the manifest (manifest.json): the spirv contract of
   build-shader-manifest.py with its contract_sha256, and the SHA-256 of each decoded
   module by name, 5 the module of a pass (build-pass-spirv.py) encoded by smol-v, by
   the name of the pass. The index has a contract line (contract_sha256), each shader
   line ends with the SHA-256 of its decoded module, and a line per pass gives its
-  name, stage, layout and the SHA-256 of its decoded module. Version 3 had no passes.
+  name, stage, layout and the SHA-256 of its decoded module. After the contract line,
+  the contract's requirements and layouts, which the Vulkan backend checks against
+  the device: "require" <capability|extension> <name>; "binding" <layout> <set>
+  <binding> <type> <detail or ->, for the draw layout ("draw") and each pass layout;
+  "push" <layout> <stage> <begin> <end>. Version 4 had no requirement and layout
+  lines, version 3 no passes.
 
 Usage: python -I build-embedded-shader-cache.py <index.tsv> <output dir> [<manifest.json> <passes smolv dir>]
 Writes shader_cache.bin, shader_cache_spirv.bin with SPIR-V (the manifest and the
@@ -81,6 +86,20 @@ def package(version, lines, entries, binary):
                 container=dict(path=str(binary.resolve()), sha256=hashlib.sha256(container).hexdigest()))
 
 
+def contract_lines(spirv):
+    """The requirement and layout lines of the SPIR-V contract (the manifest's spirv)."""
+    lines = [f'require\tcapability\t{name}' for name in spirv['required']['capabilities']]
+    lines += [f'require\textension\t{name}' for name in spirv['required']['extensions']]
+    lines += [f"binding\tdraw\t{b['set']}\t{b['binding']}\t{b['type']}\t-" for b in spirv['layout']['bindings']]
+    lines.append(f"push\tdraw\tvertex+fragment\t0\t{spirv['layout']['push_constant_bytes']}")
+    for name, layout in sorted(spirv['passes']['layouts'].items()):
+        lines += [f"binding\t{name}\t{layout['set']}\t{b['binding']}\t{b['type']}\t{b.get('detail', '-')}"
+                  for b in layout['bindings']]
+        lines += [f'push\t{name}\t{stage}\t{begin}\t{end}'
+                  for stage, (begin, end) in sorted(layout['push_constants'].items())]
+    return lines
+
+
 def main():
     index, out_dir = Path(sys.argv[1]), Path(sys.argv[2])
     manifest = Path(sys.argv[3]) if len(sys.argv) > 3 else None
@@ -136,12 +155,13 @@ def main():
             spirv_lines.append(f"{line}\t{embedded['shaders'][fields[1]]}" if fields[0] in ('vs', 'ps') else line)
             if fields[0] == 'spirv':
                 spirv_lines.append(f"contract\t{full['contract_sha256']}")
+                spirv_lines += contract_lines(full['spirv'])
                 spirv_lines += [f"pass\t{name}\t{described[name]['stage']}\t{described[name]['layout']}\t{module}"
                                 for name, module in sorted(full['passes'].items())]
         identity['spirv'] = dict(
             dir=str(dirs['spirv']), modules=len(names), passes=len(full['passes']), passes_dir=str(passes_dir),
             manifest=dict(path=str(manifest.resolve()), sha256=sha(manifest), contract_sha256=full['contract_sha256']),
-            **package(4, spirv_lines, modules, out_dir / 'shader_cache_spirv.bin'))
+            **package(5, spirv_lines, modules, out_dir / 'shader_cache_spirv.bin'))
     (out_dir / 'shader_cache.json').write_text(json.dumps(identity, indent=1) + '\n', encoding='utf-8')
     print(json.dumps({k: identity[k] for k in ('entries', 'dxil_files', 'variant_files', 'payload_bytes',
                                                'compressed_bytes', 'payload_sha256')}))

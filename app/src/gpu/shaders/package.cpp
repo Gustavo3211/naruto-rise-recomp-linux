@@ -1,6 +1,7 @@
 // The embedded shader packages (package.h).
 #include "gpu/shaders/package.h"
 #include <cstring>
+#include <mutex>
 #include <windows.h>
 #include <fmt/format.h>
 #include "gpu/common/sha256.h"
@@ -23,7 +24,7 @@ enum RecordKind : uint32_t {
   kManifestRecord = 4,
   kPassRecord = 5,
 };
-constexpr uint32_t kDxilPayloadVersion = 2, kSpirvPayloadVersion = 4;
+constexpr uint32_t kDxilPayloadVersion = 2, kSpirvPayloadVersion = 5;
 
 uint32_t U32(const uint8_t* p) {
   uint32_t v;
@@ -146,6 +147,23 @@ bool UnpackShaderPackage(ShaderFormat format, ShaderPackage& package, std::strin
     else (r.kind == kVariantRecord ? package.variants : package.modules)[r.name] = blob;
   }
   return true;
+}
+
+const ShaderPackage* EmbeddedShaderPackage(ShaderFormat format, std::string& error) {
+  struct Unpacked {
+    std::once_flag once;
+    ShaderPackage package;
+    bool ok = false;
+    std::string error;
+  };
+  static Unpacked formats[2];
+  Unpacked& unpacked = formats[format == ShaderFormat::kSpirv];
+  std::call_once(unpacked.once, [&] { unpacked.ok = UnpackShaderPackage(format, unpacked.package, unpacked.error); });
+  if (!unpacked.ok) {
+    error = unpacked.error;
+    return nullptr;
+  }
+  return &unpacked.package;
 }
 
 std::vector<uint8_t> DecodeShaderModule(const ShaderPackage& package, std::span<const uint8_t> stored) {
