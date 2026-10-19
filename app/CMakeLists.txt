@@ -31,6 +31,14 @@ set(NARUTORISE_SOURCES
 # launch in place of the Xenos plugin (renderer = "native" in narutorise.toml).
 # The executable keeps the Xenos plugin as the other renderer.
 option(NARUTORISE_NATIVE_RENDERER_BOOTSTRAP "Build the native renderer next to the Xenos plugin" OFF)
+# The host graphics APIs of the native renderer, apart from the SDK's
+# REXGLUE_USE_VULKAN (the Xenos plugin's). The engine runs on D3D12; the Vulkan
+# backend builds its Plume target and host tests while its engine is written.
+option(NARUTORISE_NATIVE_D3D12 "Build the D3D12 backend of the native renderer" ON)
+option(NARUTORISE_NATIVE_VULKAN "Build the Vulkan backend of the native renderer" OFF)
+if(NARUTORISE_NATIVE_RENDERER_BOOTSTRAP AND NOT NARUTORISE_NATIVE_D3D12)
+    message(FATAL_ERROR "The native renderer engine runs on D3D12 only so far: keep NARUTORISE_NATIVE_D3D12 ON")
+endif()
 if(NARUTORISE_NATIVE_RENDERER_BOOTSTRAP)
     list(APPEND NARUTORISE_SOURCES
          # The host: configuration, guest kernel exports and the frame lifecycle.
@@ -83,6 +91,14 @@ if(NARUTORISE_NATIVE_RENDERER_BOOTSTRAP)
     # The shader cache generated from the local game files (game/xeshader.sdb).
     include(${CMAKE_CURRENT_SOURCE_DIR}/../tools/native-renderer/shader-cache.cmake)
     narutorise_shader_cache(narutorise src/gpu/shaders/shader_cache_data.cpp)
+    if(NARUTORISE_NATIVE_VULKAN)
+        # Host test of the Vulkan device (no guest code): clear, upload, copy and
+        # readback, with a bounded wait on the submission.
+        add_executable(native_vulkan_transfer_test src/gpu/backend/vulkan/tests/transfer_test.cpp)
+        target_include_directories(native_vulkan_transfer_test PRIVATE src)
+        target_link_libraries(native_vulkan_transfer_test PRIVATE native_renderer_plume_vulkan)
+        target_compile_definitions(native_vulkan_transfer_test PRIVATE _CRT_SECURE_NO_WARNINGS)
+    endif()
 else()
     rexglue_setup_target(narutorise GPU_PLUGINS xenos)
 endif()
