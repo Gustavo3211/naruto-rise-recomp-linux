@@ -6,15 +6,12 @@
 // title's frees (820C0018, the engine free that reaches dlfree 82188C88 and
 // unlink_large_chunk 82187D58, where the corruption is detected) names the
 // thread, the lr and the time of the last 1024 frees, to match the corrupted
-// chunk of the dump with the free that released it.
+// chunk of the dump with the free that released it; the hook of that free
+// lives in engine_free.cpp.
 #include "gpu/diagnostics/crash_dump.h"
 #include "gpu/diagnostics/heap_watch.h"
-#include "gpu/interpolation/transforms.h"
 #include <windows.h>
 #include <dbghelp.h>
-#include <rex/hook.h>
-#include <rex/ppc/context.h>
-#include <rex/system/thread_state.h>
 #include <array>
 #include <atomic>
 #include <cstdio>
@@ -106,12 +103,3 @@ void NoteFree(uint32_t kind, uint32_t pointer, uint32_t heap, uint32_t arg4, uin
   ring[n % kRing] = FreeEntry{kind, pointer, heap, arg4, lr, guest_thread, now.QuadPart};
 }
 }  // namespace gpu::crash_dump
-
-// 820C0018: the engine's free (called through 82187D58 <- 82188C88).
-extern "C" void __imp__sub_820C0018(PPCContext& __restrict, uint8_t*);
-REX_HOOK_RAW(sub_820C0018) {
-  auto* state = rex::runtime::ThreadState::Get();
-  gpu::crash_dump::NoteFree(ctx.r3.u32, ctx.r4.u32, ctx.r5.u32, ctx.r6.u32, ctx.lr, state ? state->thread_id() : 0);
-  gpu::interpolation::NoteFree(ctx.r4.u32);  // The tracks of the state interpolation.
-  __imp__sub_820C0018(ctx, base);
-}

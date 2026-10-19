@@ -148,19 +148,19 @@ replacement by an older installer; reinstalling the same version is allowed.
 The version marker is also included in portable packages and is removed by the
 Inno uninstaller. Keep the same production AppId for every release.
 
-The `0.1.0-beta.2`, `0.1.0-beta.3` and `0.2.0-beta.1` installers accept migration from
-beta 1's shipped `1.0.0-beta.1` identifier, the old `1.0.0` label and the local
-`1.0.1`/`1.0.2` builds, preserving user data. The public `v0.1.0-beta.1` release tag
-did not match its installer's internal version. This numbering reset is limited to
-these releases; unrelated newer versions remain protected, and the updated
-installer code rejects the reverse transition to these old labels. Updates between
-the listed releases follow the normal numeric check (`0.1.0-beta.3` to `0.2.0-beta.1`
-is allowed, the reverse is not).
+The `0.1.0-beta.2`, `0.1.0-beta.3`, `0.2.0-beta.1` and `0.2.0-beta.2` installers
+accept migration from beta 1's shipped `1.0.0-beta.1` identifier, the old `1.0.0`
+label and the local `1.0.1`/`1.0.2` builds, preserving user data. The public
+`v0.1.0-beta.1` release tag did not match its installer's internal version. This
+numbering reset is limited to these releases; unrelated newer versions remain
+protected, and the updated installer code rejects the reverse transition to these
+old labels. Updates between the listed releases follow the normal numeric check
+(`0.1.0-beta.3` to `0.2.0-beta.1` is allowed, the reverse is not).
 
 Build this beta update with:
 
 ```powershell
-pwsh -File packaging/package-release.ps1 -Version 0.2.0-beta.1
+pwsh -File packaging/package-release.ps1 -Version 0.2.0-beta.2
 ```
 
 For automation, the installer accepts `/MODE=update` or `/MODE=install`; when
