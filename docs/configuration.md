@@ -155,7 +155,7 @@ The executable also exports `NvOptimusEnablement` and `AmdPowerXpressRequestHigh
 Turn on **Settings → Controls → Use keyboard and mouse**. The keyboard and mouse act as an Xbox controller and work alongside a connected controller. The game still shows the controller's buttons.
 
 - **Mouse moves the camera.** While exploring, the mouse turns the camera itself, at a fixed angle per pixel: at 100% **Sensitivity** (from 10% to 300%), one full turn takes about 2,100 pixels. The camera turns at most about 340 degrees per second, the speed the game's camera keeps up with; faster motion finishes over the next frames. Elsewhere, such as in fights, the mouse stands in for the right stick. While the game window has focus, the cursor stays inside it; Alt+Tab releases it.
-- **Map keys…** gives each controller input two keys. Click a field and press the new key within 5 seconds; right-click a field to clear it. A key already in use leaves its previous input. F1, F3, F4, F7 and Backtick belong to the game's overlays and cannot be mapped. **Restore default keys** brings back the layout below.
+- **Map keys…** gives each controller input two keys. Click a field and press the new key within 5 seconds; right-click a field to clear it. A key already in use leaves its previous input. F1, F3, F4, F7, F11 and Backtick are reserved for system shortcuts and cannot be mapped. **Restore default keys** brings back the layout below.
 
 Keys are recorded by their position on the keyboard, as the game reads them, and shown with your layout's labels: on an ABNT2 keyboard, the key to the right of L shows as Ç.
 
@@ -182,6 +182,7 @@ With keyboard and mouse on, closing the game takes about 3 seconds, as with a co
 | Key | Action |
 | --- | --- |
 | `F1` | Toggle the FPS and frametime overlay (shows the guest and host frame rates; Xenos renderer) |
+| `Alt+Enter` or `F11` | Toggle between borderless fullscreen and windowed mode (both renderers) |
 | `F3` | Toggle the SDK debug overlay (guest frame stats, build stamp, and per-frame counters when built with perf counters; Xenos renderer) |
 | `Alt+F4` | Request game shutdown |
 
