@@ -60,38 +60,20 @@ bool g_mapping = false;
 
 // --- Groups --------------------------------------------------------------
 
-void RenderGameGroup(OptionList& list, GameConfig& config) {
-  constexpr struct {
-    std::uint32_t code;
-    TextId label;
-  } kLanguages[] = {
-      {1, TextId::GameLanguageEnglish},
-      {4, TextId::GameLanguageFrench},
-      {3, TextId::GameLanguageGerman},
-      {5, TextId::GameLanguageSpanish},
-      {6, TextId::GameLanguageItalian},
-  };
-  // A language code set by hand stays, listed as custom, until another is chosen.
+void RenderGameGroup(OptionList& list, PageContext& context) {
+  auto& config = context.config;
+  const auto languages = GameLanguages(config, context.translation_mods);
   std::vector<const char*> items;
-  int index = -1;
-  for (const auto& language : kLanguages) {
-    if (config.user_language == language.code) index = static_cast<int>(items.size());
-    items.push_back(Tr(language.label));
-  }
-  char custom[64];
-  if (index < 0) {
-    std::snprintf(custom, sizeof(custom), Tr(TextId::GameLanguageCustom),
-                  static_cast<unsigned int>(config.user_language));
-    index = static_cast<int>(items.size());
-    items.push_back(custom);
-  }
-  if (list.Combo(kGameLanguage, index, items) && index < static_cast<int>(std::size(kLanguages))) {
-    config.user_language = kLanguages[index].code;
+  for (const auto& language : languages.options) items.push_back(language.label.c_str());
+  int index = languages.selected;
+  if (list.Combo(kGameLanguage, index, items) && index >= 0 && index < static_cast<int>(languages.options.size())) {
+    SelectGameLanguage(config, languages.options[index]);
   }
   list.Checkbox(kSkipIntro, config.skip_intro_videos);
 }
 
-void RenderDisplayGroup(OptionList& list, GameConfig& config) {
+void RenderDisplayGroup(OptionList& list, PageContext& context) {
+  auto& config = context.config;
   const bool native = kNativeRendererBuilt && config.renderer == "native";
   if (kNativeRendererBuilt) {
     const char* renderers[] = {Tr(TextId::RendererXenos), Tr(TextId::RendererNative)};
@@ -156,7 +138,8 @@ void RenderDisplayGroup(OptionList& list, GameConfig& config) {
   list.Checkbox(kFullscreen, config.fullscreen);
 }
 
-void RenderQualityGroup(OptionList& list, GameConfig& config) {
+void RenderQualityGroup(OptionList& list, PageContext& context) {
+  auto& config = context.config;
   // msaa_samples 0 keeps the game's 4x.
   const char* msaa_modes[] = {"2x", Tr(TextId::MsaaOriginal), "8x"};
   int msaa = config.msaa_samples == 2 ? 0 : config.msaa_samples >= 8 ? 2 : 1;
@@ -196,7 +179,8 @@ std::string ControllerName() {
   return name;
 }
 
-void RenderControlsGroup(OptionList& list, GameConfig& config) {
+void RenderControlsGroup(OptionList& list, PageContext& context) {
+  auto& config = context.config;
   bool sdl = config.input_backend != "xinput";
   if (list.Checkbox(kSdlInput, sdl)) config.input_backend = sdl ? "sdl" : "xinput";
   list.Text(kController, ControllerName().c_str());
@@ -211,7 +195,8 @@ void RenderControlsGroup(OptionList& list, GameConfig& config) {
   ImGui::EndDisabled();
 }
 
-void RenderAdvancedGroup(OptionList& list, GameConfig& config) {
+void RenderAdvancedGroup(OptionList& list, PageContext& context) {
+  auto& config = context.config;
   const char* latencies[] = {Tr(TextId::FrameLatencyLowest), "2", "3"};
   int latency = std::clamp(config.max_frame_latency, 1, 3) - 1;
   if (list.Combo(kFrameLatency, latency, latencies)) config.max_frame_latency = latency + 1;
@@ -221,7 +206,7 @@ void RenderAdvancedGroup(OptionList& list, GameConfig& config) {
 
 struct Group {
   TextId label;
-  void (*render)(OptionList& list, GameConfig& config);
+  void (*render)(OptionList& list, PageContext& context);
 };
 
 constexpr Group kGroups[] = {
@@ -285,7 +270,8 @@ void RenderGroupList(float height) {
 }
 
 // The options of the active group; returns the one to describe.
-const Option* RenderOptions(GameConfig& config, float height) {
+const Option* RenderOptions(PageContext& context, float height) {
+  auto& config = context.config;
   const bool native = kNativeRendererBuilt && config.renderer == "native";
   const Group& group = kGroups[g_group];
   ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(18, 14));
@@ -297,7 +283,7 @@ const Option* RenderOptions(GameConfig& config, float height) {
   const Option* described = nullptr;
   {
     OptionList list(native);
-    group.render(list, config);
+    group.render(list, context);
     described = list.Described();
   }
   ImGui::EndChild();
@@ -357,7 +343,7 @@ void RenderSettingsPage(PageContext& context) {
 
   RenderGroupList(options_height);
   ImGui::SameLine();
-  const Option* described = RenderOptions(context.config, options_height);
+  const Option* described = RenderOptions(context, options_height);
   RenderDescriptionPanel(described, native, kDescriptionHeight);
   RenderActions(context);
 }
