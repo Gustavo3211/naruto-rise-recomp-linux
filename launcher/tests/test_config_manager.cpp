@@ -108,10 +108,28 @@ int main(int argc, char** argv) {
     native.msaa_samples = 2;
     Require(ConfigManager::Save(path, native), "Native renderer options failed to save");
     const auto saved = toml::parse_file(path.string());
-    Require(saved["renderer"].value<std::string>() == (kNativeRendererBuilt ? "xenos" : "native"),
-            "Renderer choice was not saved as built");
+    Require(saved["renderer"].value<std::string>() == "native",
+            "The native-capable launcher must save the native renderer");
     Require(saved["msaa_samples"].value<int>() == (kNativeRendererBuilt ? 2 : 8),
             "Native renderer option was not saved as built");
+    Write(path, "renderer = 'xenos'\nnative_backend = 'vulkan'\n");
+    GameConfig migrated;
+    Require(ConfigManager::Load(path, migrated) &&
+                migrated.renderer == (kNativeRendererBuilt ? "native" : "xenos") &&
+                migrated.native_backend == "vulkan",
+            "Legacy Xenos selection did not migrate while preserving the native API");
+    Require(ConfigManager::Save(path, migrated), "Migrated renderer failed to save");
+    Require(toml::parse_file(path.string())["renderer"].value<std::string>() ==
+                (kNativeRendererBuilt ? "native" : "xenos"),
+            "Migrated renderer did not persist");
+    for (const auto* api : {"d3d12", "vulkan"}) {
+      if (!kNativeRendererBuilt) continue;
+      migrated.native_backend = api;
+      Require(ConfigManager::Save(path, migrated), "Native API failed to save");
+      GameConfig restored;
+      Require(ConfigManager::Load(path, restored) && restored.renderer == "native" &&
+                  restored.native_backend == api, "Native API did not survive a round trip");
+    }
     // The graphics card, for both renderers: read and saved by name.
     Write(path, "graphics_device = 'NVIDIA GeForce RTX 4060 Laptop GPU'\n");
     GameConfig device;

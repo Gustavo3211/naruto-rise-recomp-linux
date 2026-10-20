@@ -59,6 +59,13 @@ REXCVAR_DEFINE_DOUBLE(internal_resolution_scale, 0.0, "narutorise/Graphics",
     .lifecycle(rex::cvar::Lifecycle::kRequiresRestart);
 // Defined by the app for both renderers (graphics_device.cpp).
 REXCVAR_DECLARE(std::string, graphics_device);
+#if defined(NARUTORISE_NATIVE_D3D12_DISABLED)
+REXCVAR_DEFINE_STRING(native_backend, "vulkan", "narutorise/Graphics", "Native renderer graphics API")
+#else
+REXCVAR_DEFINE_STRING(native_backend, "d3d12", "narutorise/Graphics", "Native renderer graphics API")
+#endif
+    .allowed({"d3d12", "vulkan"})
+    .lifecycle(rex::cvar::Lifecycle::kRequiresRestart);
 
 namespace gpu {
 namespace {
@@ -132,7 +139,7 @@ rex::cvar::FlagEntry StringOption(const char* name, std::string& value, std::vec
 constexpr std::string_view kOptions[] = {
     "vsync", "anisotropic_override", "swap_post_effect", "resolution_scale", "draw_resolution_scale_x",
     "draw_resolution_scale_y", "max_frame_latency", "triple_buffering", "brightness", "internal_resolution_scale",
-    "msaa_samples", "transparency_antialiasing", "frame_rate", "graphics_device",
+    "msaa_samples", "transparency_antialiasing", "frame_rate", "graphics_device", "native_backend",
     "d3d12_allow_variable_refresh_rate_and_tearing", "present_effect", "present_cas_additional_sharpness",
     "present_fsr_sharpness_reduction", "present_fsr_max_upsampling_passes"};
 
@@ -237,6 +244,7 @@ void LoadSettings() {
   s.transparency_antialiasing = REXCVAR_GET(transparency_antialiasing);
   s.frame_rate = uint32_t(std::clamp(REXCVAR_GET(frame_rate), 30, 240));
   s.graphics_device = REXCVAR_GET(graphics_device);
+  s.native_backend = REXCVAR_GET(native_backend);
   if (rex::cvar::GetFlagInfo("d3d12_allow_variable_refresh_rate_and_tearing"))
     s.allow_tearing = rex::cvar::Query<bool>("d3d12_allow_variable_refresh_rate_and_tearing");
   // fsr2 and fsr3 are the SDK's temporal upscalers, not covered: they keep bilinear.
