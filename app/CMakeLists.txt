@@ -153,7 +153,7 @@ if(NARUTORISE_NATIVE_RENDERER_BOOTSTRAP)
                                    NATIVE_RENDERER_ENGINE_FAULT_TEST=1 NARUTORISE_SHADER_CACHE_SPIRV=1
                                    _CRT_SECURE_NO_WARNINGS)
         add_dependencies(native_engine_test_units narutorise_native_shader_cache)
-        foreach(_narutorise_engine_test IN ITEMS latch lifetime failure translation resource depth_resolve depth_only)
+        foreach(_narutorise_engine_test IN ITEMS latch lifetime failure translation resource depth_resolve depth_only present_edge)
             add_executable(native_engine_${_narutorise_engine_test}_test
                            src/gpu/backend/tests/${_narutorise_engine_test}_test.cpp)
             target_link_libraries(native_engine_${_narutorise_engine_test}_test PRIVATE native_engine_test_units)
