@@ -207,6 +207,50 @@ inline constexpr const char* kDe[] = {
     "Mittlere Maus",  // MouseMiddleName
     "Native Grafik-API",  // NativeBackendLabel
     "Direct3D 12 oder Vulkan wählen. Neustart des Spiels erforderlich. Vulkan begrenzt die Warteschlange auf eine Präsentation.",  // NativeBackendDescription
+    "Nach Updates suchen",  // UpdatesCheck
+    "Suche nach Updates…",  // UpdatesChecking
+    "Deine Version ist aktuell.",  // UpdatesCurrent
+    "Prüfung fehlgeschlagen. Versuche es später erneut.",  // UpdatesFailed
+    "Die installierte Version konnte nicht verglichen werden.",  // UpdatesUnknownVersion
+    "Neue Version verfügbar: %s",  // UpdatesAvailable
+    "Neuerungen",  // UpdatesNotes
+    "Update herunterladen",  // UpdatesDownload
+    "Windows-Installer",  // UpdatesInstaller
+    "Portables ZIP",  // UpdatesPortable
+    "Später",  // UpdatesLater
+    "Diese Version ignorieren",  // UpdatesIgnore
+    "Der Browser konnte nicht geöffnet werden. Versuche es erneut.",  // UpdatesBrowserFailed
+    "Öffnet den Download im Browser. Schließe das Spiel und den Launcher, bevor du das Update installierst.",  // UpdatesDownloadHint
+    "Bitte warten. Es ist nur eine Prüfung pro Minute möglich.",  // UpdatesCheckCooldown
+    "Manueller Download",  // UpdatesManualDownload
+    "Update wird heruntergeladen…",  // UpdatesDownloading
+    "Download wird überprüft…",  // UpdatesVerifying
+    "Abbruch läuft…",  // UpdatesCancelling
+    "Abbrechen",  // UpdatesCancel
+    "Download abgebrochen.",  // UpdatesCancelled
+    "Download überprüft. Der Launcher wird geschlossen und Setup aktualisiert diesen Ordner:",  // UpdatesReadyToInstall
+    "Installieren und Launcher schließen",  // UpdatesInstallClose
+    "Download fehlgeschlagen. Prüfe die Verbindung und versuche es erneut.",  // UpdatesDownloadFailed
+    "Die Datei hat die Prüfung nicht bestanden. Lade sie erneut herunter.",  // UpdatesIntegrityFailed
+    "Das Update konnte nicht bestätigt werden. Prüfe erneut oder öffne die Release-Seite über Neuerungen.",  // UpdatesMetadataFailed
+    "Download konnte nicht gespeichert werden. Prüfe Speicherplatz und Ordnerberechtigungen.",  // UpdatesStorageFailed
+    "Schließe das Spiel und andere Launcher, die diesen Ordner verwenden, und versuche es erneut.",  // UpdatesCloseGame
+    "Der Installer konnte nicht gestartet werden. Versuche es erneut oder öffne die Release-Seite über Neuerungen.",  // UpdatesInstallFailed
+    "Einstellungen konnten nicht gespeichert werden. Korrigiere vor der Installation die Dateiberechtigungen.",  // UpdatesSaveFailed
+    "Die Installationsregistrierung hat sich geändert. Schließe den Launcher, öffne ihn erneut und versuche es noch einmal.",  // UpdatesNotInstalled
+    "Herunterladen und installieren",  // UpdatesDownloadInstall
+    "Installer starten",  // UpdatesLaunchInstaller
+    "Der Installer wird heruntergeladen und überprüft. Danach fragen wir erneut, bevor der Launcher geschlossen und der Installationsassistent zum Aktualisieren des Spiels geöffnet wird.",  // UpdatesConfirmDownload
+    "Der Installer wurde heruntergeladen und überprüft. Jetzt starten? Deine Einstellungen werden gespeichert und der Launcher wird geschlossen. Der Assistent führt dich durch das Update. Schließe vorher das Spiel.",  // UpdatesConfirmInstall
+    "Diese Kopie ist portabel. Der Installer registriert sie im selben Ordner als Windows-Anwendung. Dieser Vorgang verwendet keine ZIP-Datei.",  // UpdatesPortableConversion
+    "Installationsordner",  // UpdatesDestination
+    "Mit dem Download fortfahren?",  // UpdatesContinue
+    "Ja",  // UpdatesYes
+    "Nein",  // UpdatesNo
+    "Download bereit. Klicke auf Herunterladen und installieren, um den Installer zu öffnen.",  // UpdatesDownloadReady
+    "Für diese Version gibt es keinen Windows-Installer. Siehe Neuerungen.",  // UpdatesNoInstaller
+    "Download abbrechen",  // UpdatesCancelDownload
+    "Dieser Ordner enthält nicht den vollständigen PC-Port. Verwende den Launcher im Ordner mit narutorise.exe und narutorise_launcher.exe.",  // UpdatesMissingPortFiles
 };
 
 }  // namespace localization_strings

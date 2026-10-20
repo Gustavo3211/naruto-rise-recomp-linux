@@ -207,6 +207,50 @@ inline constexpr const char* kIt[] = {
     "Mouse centrale",  // MouseMiddleName
     "API grafica nativa",  // NativeBackendLabel
     "Scegli Direct3D 12 o Vulkan. Richiede il riavvio del gioco. Vulkan mantiene una presentazione in attesa.",  // NativeBackendDescription
+    "Controlla aggiornamenti",  // UpdatesCheck
+    "Ricerca aggiornamenti…",  // UpdatesChecking
+    "La tua versione è aggiornata.",  // UpdatesCurrent
+    "Verifica non riuscita. Riprova più tardi.",  // UpdatesFailed
+    "Impossibile confrontare la versione installata.",  // UpdatesUnknownVersion
+    "Nuova versione disponibile: %s",  // UpdatesAvailable
+    "Novità",  // UpdatesNotes
+    "Scarica aggiornamento",  // UpdatesDownload
+    "Programma di installazione Windows",  // UpdatesInstaller
+    "ZIP portatile",  // UpdatesPortable
+    "Più tardi",  // UpdatesLater
+    "Ignora questa versione",  // UpdatesIgnore
+    "Impossibile aprire il browser. Riprova.",  // UpdatesBrowserFailed
+    "Apre il download nel browser. Chiudi il gioco e il launcher prima di applicare l’aggiornamento.",  // UpdatesDownloadHint
+    "Attendi. È consentita una verifica al minuto.",  // UpdatesCheckCooldown
+    "Download manuale",  // UpdatesManualDownload
+    "Download dell’aggiornamento…",  // UpdatesDownloading
+    "Verifica del download…",  // UpdatesVerifying
+    "Annullamento…",  // UpdatesCancelling
+    "Annulla",  // UpdatesCancel
+    "Download annullato.",  // UpdatesCancelled
+    "Download verificato. Il launcher si chiuderà e il programma di installazione aggiornerà questa cartella:",  // UpdatesReadyToInstall
+    "Installa e chiudi il launcher",  // UpdatesInstallClose
+    "Download non riuscito. Verifica la connessione e riprova.",  // UpdatesDownloadFailed
+    "Il file non ha superato la verifica. Scaricalo di nuovo.",  // UpdatesIntegrityFailed
+    "Impossibile confermare l’aggiornamento. Riprova o apri la pagina della versione da Novità.",  // UpdatesMetadataFailed
+    "Impossibile salvare il download. Verifica lo spazio libero e i permessi della cartella.",  // UpdatesStorageFailed
+    "Chiudi il gioco e gli altri launcher che usano questa cartella, poi riprova a installare.",  // UpdatesCloseGame
+    "Impossibile avviare il programma di installazione. Riprova o apri la pagina della versione da Novità.",  // UpdatesInstallFailed
+    "Impossibile salvare le impostazioni. Correggi i permessi del file prima di installare.",  // UpdatesSaveFailed
+    "La registrazione dell’installazione è cambiata. Chiudi e riapri il launcher, poi riprova.",  // UpdatesNotInstalled
+    "Scarica e installa",  // UpdatesDownloadInstall
+    "Avvia programma di installazione",  // UpdatesLaunchInstaller
+    "Il programma di installazione verrà scaricato e verificato. Poi chiederemo un’altra conferma prima di chiudere il launcher e aprire la procedura guidata per aggiornare il gioco.",  // UpdatesConfirmDownload
+    "Il programma di installazione è stato scaricato e verificato. Vuoi avviarlo ora? Le impostazioni verranno salvate e il launcher si chiuderà. La procedura guidata ti accompagnerà nell’aggiornamento. Chiudi il gioco prima di continuare.",  // UpdatesConfirmInstall
+    "Questa copia è portatile. Il programma di installazione la registrerà come applicazione Windows nella stessa cartella. Questo processo non usa lo ZIP.",  // UpdatesPortableConversion
+    "Cartella di installazione",  // UpdatesDestination
+    "Continuare con il download?",  // UpdatesContinue
+    "Sì",  // UpdatesYes
+    "No",  // UpdatesNo
+    "Download pronto. Premi Scarica e installa per aprire il programma di installazione.",  // UpdatesDownloadReady
+    "Questa versione non ha un programma di installazione Windows. Consulta Novità.",  // UpdatesNoInstaller
+    "Annulla download",  // UpdatesCancelDownload
+    "Questa cartella non contiene il port completo. Usa il launcher nella cartella con narutorise.exe e narutorise_launcher.exe.",  // UpdatesMissingPortFiles
 };
 
 }  // namespace localization_strings

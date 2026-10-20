@@ -26,6 +26,22 @@ int main(int argc, char** argv) {
     std::filesystem::create_directories(root);
     const auto path = root / "narutorise.toml";
 
+    const auto unicode_dir = root / std::filesystem::path(u8"instalação-設定");
+    std::filesystem::create_directories(unicode_dir);
+    const auto unicode_path = unicode_dir / "narutorise.toml";
+    Write(unicode_path, "fullscreen = false\nlauncher_language = 'pt_BR'\nuser_language = 3\n"
+                        "personal_setting = 'keep'\nuser_data_root = 'user'\n");
+    GameConfig unicode_config;
+    Require(ConfigManager::Load(unicode_path, unicode_config), "Unicode install path failed to load settings");
+    Require(!unicode_config.fullscreen && unicode_config.launcher_language == "pt_BR" && unicode_config.user_language == 3,
+            "Unicode install path reset user preferences");
+    Require(ConfigManager::Save(unicode_path, unicode_config), "Unicode install path failed to save settings");
+    std::ifstream unicode_file(unicode_path, std::ios::binary);
+    const auto unicode_table = toml::parse(unicode_file);
+    Require(unicode_table["personal_setting"].value<std::string>() == "keep" &&
+                unicode_table["user_data_root"].value<std::string>() == "user",
+            "Saving through a Unicode path erased unmanaged user settings");
+
     Write(path, "launcher_language = 'pt_BR'\n");
     GameConfig legacy;
     Require(ConfigManager::Load(path, legacy), "Legacy configuration failed to load");

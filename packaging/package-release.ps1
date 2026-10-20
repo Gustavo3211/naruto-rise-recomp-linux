@@ -226,6 +226,14 @@ Choose your original Xbox 360 ISO, or skip it to use already extracted files.
 ISO extraction is available only in Setup; run Setup again to import later.
 The setup preserves game and narutorise.toml on reinstall/uninstall.
 
+UPDATES:
+The launcher checks GitHub Releases and notifies you when a newer version exists.
+Choose Download and install, then confirm the download. After verification,
+a second confirmation opens Setup in the correct folder and closes the launcher.
+Close the game and any other launcher using that folder before installing.
+For portable copies, the first confirmation explains conversion to a registered
+Windows installation. ZIP downloads remain on the release page and require manual extraction.
+
 MANUAL UPDATE:
 Run the new NarutoRiseInstaller.exe and choose Update an existing installation.
 Select the folder containing narutorise.exe and narutorise_launcher.exe.

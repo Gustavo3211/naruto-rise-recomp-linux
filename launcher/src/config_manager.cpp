@@ -9,7 +9,12 @@ bool ConfigManager::Load(const std::filesystem::path& toml_path, GameConfig& con
     return false;
   }
   try {
-    auto tbl = toml::parse_file(toml_path.string());
+    // Open the native filesystem path (UTF-16 on Windows), not an ANSI path
+    // passed to a parser expecting UTF-8. Otherwise accented install folders
+    // silently fall back to defaults and lose user settings on the next save.
+    std::ifstream input(toml_path, std::ios::binary);
+    if (!input) return false;
+    auto tbl = toml::parse(input);
     if (auto v = tbl["gpu_plugin"].value<std::string>()) config.gpu_plugin = *v;
     if (auto v = tbl["renderer"].value<std::string>()) config.renderer = *v == "xenos" ? "xenos" : "native";
     // The launcher now selects the native graphics API directly. Migrate old
@@ -74,7 +79,9 @@ bool ConfigManager::Save(const std::filesystem::path& toml_path, const GameConfi
   toml::table tbl;
   if (std::filesystem::exists(toml_path)) {
     try {
-      tbl = toml::parse_file(toml_path.string());
+      std::ifstream input(toml_path, std::ios::binary);
+      if (!input) return false;
+      tbl = toml::parse(input);
     } catch (...) {
       tbl = toml::table{};
     }

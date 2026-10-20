@@ -11,6 +11,8 @@ endif()
 set(LAUNCHER_SOURCES
     src/main.cpp
     src/app_version.cpp
+    src/update_checker.cpp
+    src/update_installer.cpp
     src/config_manager.cpp
     src/content_manager.cpp
     src/folders.cpp
@@ -85,6 +87,9 @@ if(WIN32)
         d3d12
         dxgi
         shell32
+        winhttp
+        bcrypt
+        advapi32
     )
 endif()
 
@@ -105,6 +110,42 @@ add_custom_target(narutorise_launcher_assets ALL
 add_dependencies(narutorise_launcher narutorise_launcher_assets)
 
 # Configuration regression tests can run without game files or the SDL UI.
+add_executable(narutorise_update_checker_test EXCLUDE_FROM_ALL
+    tests/test_update_checker.cpp src/update_checker.cpp)
+target_include_directories(narutorise_update_checker_test PRIVATE src)
+target_link_libraries(narutorise_update_checker_test PRIVATE narutorise::json)
+if(WIN32)
+    target_link_libraries(narutorise_update_checker_test PRIVATE winhttp)
+endif()
+set_target_properties(narutorise_update_checker_test PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}")
+
+if(WIN32)
+    # Runs the actual launcher main loop with isolated fixture services and ImGui
+    # input. Only built explicitly; never part of the distributable package.
+    set(UPDATE_UI_TEST_SOURCES ${LAUNCHER_SOURCES})
+    list(REMOVE_ITEM UPDATE_UI_TEST_SOURCES src/main.cpp)
+    add_executable(narutorise_update_ui_test WIN32 EXCLUDE_FROM_ALL
+        tests/test_update_ui.cpp ${UPDATE_UI_TEST_SOURCES})
+    target_include_directories(narutorise_update_ui_test PRIVATE
+        $<TARGET_PROPERTY:narutorise_launcher,INCLUDE_DIRECTORIES>)
+    target_compile_definitions(narutorise_update_ui_test PRIVATE
+        $<TARGET_PROPERTY:narutorise_launcher,COMPILE_DEFINITIONS>)
+    target_compile_options(narutorise_update_ui_test PRIVATE
+        $<TARGET_PROPERTY:narutorise_launcher,COMPILE_OPTIONS>)
+    target_link_libraries(narutorise_update_ui_test PRIVATE
+        $<TARGET_PROPERTY:narutorise_launcher,LINK_LIBRARIES>)
+    set_target_properties(narutorise_update_ui_test PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}")
+
+    add_executable(narutorise_update_installer_test EXCLUDE_FROM_ALL
+        tests/test_update_installer.cpp src/app_version.cpp src/update_checker.cpp src/update_installer.cpp)
+    target_include_directories(narutorise_update_installer_test PRIVATE src)
+    target_link_libraries(narutorise_update_installer_test PRIVATE narutorise::json winhttp bcrypt advapi32 shell32)
+    set_target_properties(narutorise_update_installer_test PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}")
+endif()
+
 add_executable(narutorise_config_manager_test EXCLUDE_FROM_ALL
     tests/test_config_manager.cpp
     src/config_manager.cpp
