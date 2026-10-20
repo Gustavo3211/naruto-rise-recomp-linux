@@ -133,8 +133,9 @@ void LoadShaderCache(ShaderFormat format) {
   // REX_NATIVE_SHADER_INDEX is not read; a run that sets it only records that.
   const auto started = std::chrono::steady_clock::now();
   shader_cache.format = format;
-  ShaderPackage& package = shader_cache.package;
-  if (!UnpackShaderPackage(format, package, shader_cache.error)) return;
+  shader_cache.package = EmbeddedShaderPackage(format, shader_cache.error);
+  if (!shader_cache.package) return;
+  const ShaderPackage& package = *shader_cache.package;
   const bool spirv = format == ShaderFormat::kSpirv;
   shader_cache.record = fmt::format("\"embedded\":true,\"container_bytes\":{},\"payload_bytes\":{},"
                                     "\"payload_sha256\":\"{}\",\"{}\":{},\"variants\":{}", package.container_bytes,
@@ -185,9 +186,9 @@ void LoadShaderCache(ShaderFormat format) {
 std::shared_ptr<const std::vector<uint8_t>> LoadModule(CachedShader& shader) {
   std::lock_guard lock(shader_cache.mutex);
   if (shader.module) return shader.module;
-  auto it = shader_cache.package.modules.find(shader.name);  // The embedded cache.
-  if (it == shader_cache.package.modules.end()) return nullptr;
-  auto module = DecodeShaderModule(shader_cache.package, it->second);
+  auto it = shader_cache.package->modules.find(shader.name);  // The embedded cache.
+  if (it == shader_cache.package->modules.end()) return nullptr;
+  auto module = DecodeShaderModule(*shader_cache.package, it->second);
   if (module.empty()) return nullptr;
   // The decoded SPIR-V is the module spirv-val checked in the build.
   if (shader_cache.format == ShaderFormat::kSpirv && Sha256Hex(module.data(), module.size()) != shader.spirv_sha256)
@@ -209,8 +210,8 @@ std::shared_ptr<const std::vector<uint8_t>> LoadShader(CachedShader& shader, uin
   }
   std::lock_guard lock(shader_cache.mutex);
   if (auto it = shader.linked.find(spec); it != shader.linked.end()) return it->second;
-  auto found = shader_cache.package.variants.find(fmt::format("{}+spec{}", shader.name, spec));  // The embedded cache.
-  if (found == shader_cache.package.variants.end()) {
+  auto found = shader_cache.package->variants.find(fmt::format("{}+spec{}", shader.name, spec));  // The embedded cache.
+  if (found == shader_cache.package->variants.end()) {
     error = "variant-missing";
     return nullptr;
   }

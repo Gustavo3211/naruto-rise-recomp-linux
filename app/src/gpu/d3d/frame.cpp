@@ -621,7 +621,10 @@ REX_HOOK_RAW(sub_82138A20) {
       auto* dispatcher = gpu::host::ActiveDispatcher();
       return dispatcher && dispatcher->Drain(evidence);
     };
-    if (device_owner->BlockOnFence(previous_fence, drain, FenceWaitFailed, fields) ==
+    const auto* dispatcher = gpu::host::ActiveDispatcher();
+    const auto preparation_budget = std::chrono::seconds(
+        dispatcher && dispatcher->Api() == GraphicsApi::kVulkan ? 60 : 2);
+    if (device_owner->BlockOnFence(previous_fence, drain, FenceWaitFailed, fields, preparation_budget) ==
         DeviceOwner::FenceResult::Failed) {
       TakeStopRequest(ctx);  // A watchdog stop asked meanwhile keeps its own reason.
       RecordPostedFailure("Swap-previous-frame-fence");

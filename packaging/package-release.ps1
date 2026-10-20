@@ -124,6 +124,8 @@ foreach ($name in $peFiles) {
 $ReleaseParts = @{
     FidelityFX = $binaries -contains $FidelityFxDll
     NativeRenderer = $cache -match '(?m)^NARUTORISE_NATIVE_RENDERER_BOOTSTRAP:BOOL=(ON|TRUE|YES|1)\s*$'
+    NativeVulkan = ($cache -match '(?m)^NARUTORISE_NATIVE_RENDERER_BOOTSTRAP:BOOL=(ON|TRUE|YES|1)\s*$') -and
+                   ($cache -match '(?m)^NARUTORISE_NATIVE_VULKAN:BOOL=(ON|TRUE|YES|1)\s*$')
 }
 $Licenses = @((Import-PowerShellDataFile (Join-Path $PSScriptRoot 'third-party-licenses.psd1')).Components |
     Where-Object { -not $_.Condition -or $ReleaseParts[$_.Condition] })

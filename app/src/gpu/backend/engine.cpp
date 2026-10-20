@@ -39,7 +39,9 @@ bool Engine::Refused(std::string& evidence) const {
 bool Engine::Initialize(std::string& evidence, const RenderMode& mode) {
   if (!backend_) {
     api_ = mode.api;
+#if !defined(NARUTORISE_NATIVE_D3D12_DISABLED)
     if (mode.api == GraphicsApi::kD3D12) backend_ = CreateD3d12Backend(failures_);
+#endif
 #if defined(NARUTORISE_NATIVE_VULKAN)
     if (mode.api == GraphicsApi::kVulkan) backend_ = CreateVulkanBackend(failures_);
 #endif

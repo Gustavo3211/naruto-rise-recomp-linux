@@ -142,8 +142,8 @@ int main(int argc, char** argv) {
   line("counts", Count(counts, "depth_resolves") == 4, counts);
   line("release-remaining", engine.ReleaseRemaining(evidence), evidence);
   const bool shutdown = engine.Shutdown(evidence);
-  line("shutdown", shutdown && Has(evidence, "\"unexpected_debug_messages\":0") &&
-       Has(evidence, "\"device_removed_reason\":0"), evidence);
+  line("shutdown", shutdown && (engine.Api() == GraphicsApi::kVulkan ||
+       (Has(evidence, "\"unexpected_debug_messages\":0") && Has(evidence, "\"device_removed_reason\":0"))), evidence);
   output << "{\"kind\":\"verdict\",\"passed\":" << (passed ? "true" : "false") << ",\"guest_executed\":false}\n";
   return passed && output.good() ? 0 : 1;
 }

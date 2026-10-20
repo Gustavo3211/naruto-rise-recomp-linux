@@ -133,7 +133,11 @@ cmake --build app/out/build/win-amd64-release
 
 The build translates the game's shaders with the XenosRecomp fork, compiles them with DXC, links the spec constant variants, and embeds the result in `narutorise.exe`, so the native renderer needs no shader compiler at run time. The shader cache derives from your game files and stays out of Git. The build keeps the translated and compiled shaders in `out/shader-store` (`NARUTORISE_SHADER_STORE`; empty disables it) and reuses them while the game files, the XenosRecomp fork, and DXC do not change; deleting the folder only makes the next build slower.
 
-The list of pipelines compiled at startup, `app/src/gpu/shaders/pipeline_cache.inc`, is optional and also stays out of Git, because it is generated from local play sessions. Without it, the build succeeds, and each pipeline compiles in the background the first time it appears, skipping its draws until it is ready.
+To include Vulkan, add `-DNARUTORISE_NATIVE_VULKAN=ON`. Initialize Plume's `contrib/volk`, `contrib/Vulkan-Headers` and `contrib/VulkanMemoryAllocator` submodules and provide `spirv-val` on PATH or with `-DNARUTORISE_SPIRV_VAL=<path>`. The build checks their revisions, enables the required device extensions in a separate build copy of Plume, and embeds validated SPIR-V for the game and presentation passes. Use `-DNARUTORISE_NATIVE_D3D12=OFF` for a Vulkan-only native renderer, or `-DNARUTORISE_NATIVE_VULKAN=OFF` for D3D12 only. At least one must be enabled when the native renderer is built.
+
+The launcher lists only the native APIs included in that build. `native_backend = "vulkan"` selects Vulkan; an omitted key selects D3D12 when available, otherwise Vulkan. Explicitly requesting an absent API fails without switching APIs. Vulkan needs the system loader and a compatible driver, including extended dynamic state and swapchain maintenance1 (KHR or EXT) for presentation retirement. Users do not need DXC, Vulkan SDK, `spirv-val` or validation layers.
+
+The list of pipelines compiled at startup, `app/src/gpu/shaders/pipeline_cache.inc`, is optional and also stays out of Git, because it is generated from local play sessions. Without it, the build succeeds; a missing pipeline is created or awaited before its draw. Normal rendering does not skip draws while pipelines compile.
 
 ### Output
 

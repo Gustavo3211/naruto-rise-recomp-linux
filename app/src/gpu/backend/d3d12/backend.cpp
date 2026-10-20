@@ -2,6 +2,7 @@
 // queue, the fence and the swapchain; the resources, commands and passes are
 // D3D12's own.
 #include "gpu/backend/backend.h"
+#include "gpu/backend/output_plan.h"
 #include "gpu/backend/d3d12/formats.h"
 #include "gpu/backend/lifecycle.h"
 #include "gpu/backend/pipeline_keys.h"
@@ -130,41 +131,7 @@ void archiveClearWarnings(ID3D12InfoQueue* info, bool colorTargetExists, uint64_
 // Presenter::GetGuestOutputPaintFlow: FSR upscales with EASU passes of up to 2x
 // each, then RCAS at the reached size; CAS (and FSR without upscaling) sharpens
 // at the same size or resamples up to 2x; a bilinear pass stretches the rest.
-enum class OutputPass : uint8_t { kBilinear, kCasSharpen, kCasResample, kFsrEasu, kFsrRcas };
-struct OutputStep {
-  OutputPass pass;
-  uint32_t width, height;
-};
-const char* OutputPassName(OutputPass pass) {
-  switch (pass) {
-    case OutputPass::kCasSharpen: return "cas-sharpen";
-    case OutputPass::kCasResample: return "cas-resample";
-    case OutputPass::kFsrEasu: return "fsr-easu";
-    case OutputPass::kFsrRcas: return "fsr-rcas";
-    default: return "bilinear";
-  }
-}
-std::vector<OutputStep> OutputPlan(const PresentMode& mode, uint32_t in_width, uint32_t in_height,
-                                   uint32_t out_width, uint32_t out_height) {
-  std::vector<OutputStep> plan;
-  uint32_t w = in_width, h = in_height;
-  if (mode.effect == PresentEffect::kFsr && (w < out_width || h < out_height)) {
-    for (uint32_t n = 0; n < mode.fsr_passes && (w < out_width || h < out_height); ++n) {
-      w = std::min(w * 2, out_width);
-      h = std::min(h * 2, out_height);
-      plan.push_back({OutputPass::kFsrEasu, w, h});
-    }
-    plan.push_back({OutputPass::kFsrRcas, w, h});
-  } else if (mode.effect != PresentEffect::kBilinear) {
-    const uint32_t pre_w = w, pre_h = h;
-    w = std::min(w * 2, out_width);
-    h = std::min(h * 2, out_height);
-    plan.push_back({w == pre_w && h == pre_h ? OutputPass::kCasSharpen : OutputPass::kCasResample, w, h});
-  }
-  if (plan.empty() || plan.back().width != out_width || plan.back().height != out_height)
-    plan.push_back({OutputPass::kBilinear, out_width, out_height});
-  return plan;
-}
+
 }
 
 class Backend final : public gpu::Backend {

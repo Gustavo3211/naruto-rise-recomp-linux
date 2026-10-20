@@ -8,10 +8,15 @@
 #include <cstddef>
 
 namespace gpu {
+#if !defined(NARUTORISE_NATIVE_D3D12_DISABLED)
 alignas(16) extern const char kShaderCache[] = {
 #embed <shader_cache.bin>
 };
 extern const size_t kShaderCacheSize = sizeof(kShaderCache);
+#else
+extern const char kShaderCache[] = {0};
+extern const size_t kShaderCacheSize = 0;
+#endif
 #if NARUTORISE_SHADER_CACHE_SPIRV
 alignas(16) extern const char kShaderCacheSpirv[] = {
 #embed <shader_cache_spirv.bin>

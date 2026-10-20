@@ -97,5 +97,17 @@
         @{ Name = 'XenosRecomp (shader translation, shader_common.h in the embedded shaders)'; License = 'MIT'; Condition = 'NativeRenderer'
            Url = 'https://github.com/hedge-dev/XenosRecomp'; File = 'tools/xenosrecomp/LICENSE.md'; Target = 'xenosrecomp.txt'
            Usage = 'narutorise.exe' }
+        @{ Name = 'volk'; License = 'MIT'; Condition = 'NativeVulkan'
+           Url = 'https://github.com/zeux/volk'; File = 'packaging/licenses/volk.txt'; Target = 'volk.txt'
+           Usage = 'narutorise.exe (Vulkan loader)' }
+        @{ Name = 'Vulkan Memory Allocator'; License = 'MIT'; Condition = 'NativeVulkan'
+           Url = 'https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator'; File = 'packaging/licenses/vulkan-memory-allocator.txt'; Target = 'vulkan-memory-allocator.txt'
+           Usage = 'narutorise.exe' }
+        @{ Name = 'Vulkan Headers'; License = 'Apache-2.0'; Condition = 'NativeVulkan'
+           Url = 'https://github.com/KhronosGroup/Vulkan-Headers'; File = 'packaging/licenses/vulkan-headers-apache.txt'; Target = 'vulkan-headers.txt'
+           Usage = 'narutorise.exe and narutorise_launcher.exe' }
+        @{ Name = 'SMOL-V'; License = 'MIT and Apache-2.0'; Condition = 'NativeVulkan'
+           Url = 'https://github.com/aras-p/smol-v'; File = 'tools/xenosrecomp/thirdparty/smol-v/license.txt'; Target = 'smol-v.txt'
+           Usage = 'narutorise.exe (embedded SPIR-V decoder)' }
     )
 }

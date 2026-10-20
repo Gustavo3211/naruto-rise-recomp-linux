@@ -51,7 +51,7 @@ struct ShaderCache {
   // The package of the session's format embedded in the build, decompressed
   // once, and the contract of the SPIR-V one (its index).
   ShaderFormat format = ShaderFormat::kDxil;
-  ShaderPackage package;
+  const ShaderPackage* package = nullptr;
   std::string contract;
   std::atomic<uint64_t> variants_loaded{0};  // Variants taken from the package.
   std::string record;  // JSON fields of the load, for the first draw record.

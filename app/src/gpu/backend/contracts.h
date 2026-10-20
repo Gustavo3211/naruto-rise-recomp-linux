@@ -350,7 +350,11 @@ struct RenderMode {
   ResolutionScale scale;
   uint32_t msaa_samples = 0;
   std::string device;
+#if defined(NARUTORISE_NATIVE_D3D12_DISABLED)
+  GraphicsApi api = GraphicsApi::kVulkan;
+#else
   GraphicsApi api = GraphicsApi::kD3D12;
+#endif
   uint32_t Samples(uint32_t guest) const { return guest > 1 && msaa_samples ? msaa_samples : guest; }
   // A surface or resolve destination in guest pixels and samples, as the engine creates it.
   SurfaceDesc Host(SurfaceDesc desc) const {
