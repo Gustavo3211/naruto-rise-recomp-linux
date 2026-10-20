@@ -138,8 +138,8 @@ inline constexpr const char* kEs[] = {
     "Se aplica al iniciar el juego. Los textos y voces disponibles dependen de los archivos del juego.",  // GameLanguageDescription
     "Idioma de la interfaz del launcher",  // LauncherLanguageTooltip
     "Xenos (GPU emulada)",  // RendererXenos
-    "Nativo (Direct3D 12)",  // RendererNative
-    "El renderizador nativo dibuja el juego directamente con Direct3D 12 y es el predeterminado: más rápido y con más opciones. Xenos emula la GPU de Xbox 360 y cubre todo el juego; elígelo si algo no se ve bien con el renderizador nativo.",  // RendererDescription
+    "Nativo",  // RendererNative
+    "API gráfica del juego: Direct3D 12 o Vulkan. Se aplica al iniciar el juego.",  // RendererDescription
     "No disponible con el renderizador nativo. Elige Xenos en Renderizador para usarlo.",  // XenosOnlyReason
     "MSAA",  // MsaaLabel
     "4x (original)",  // MsaaOriginal
@@ -205,6 +205,8 @@ inline constexpr const char* kEs[] = {
     "Clic izq.",  // MouseLeftName
     "Clic der.",  // MouseRightName
     "Clic central",  // MouseMiddleName
+    "API gráfica nativa",  // NativeBackendLabel
+    "Elige Direct3D 12 o Vulkan. Requiere reiniciar el juego. Vulkan mantiene una presentación pendiente.",  // NativeBackendDescription
 };
 
 }  // namespace localization_strings

@@ -164,8 +164,8 @@ const char* const kStringsEn[] = {
     "Launcher interface language",
     // --- Renderer ---
     "Xenos (emulated GPU)",
-    "Native (Direct3D 12)",
-    "The native renderer draws the game directly with Direct3D 12 and is the default: faster and with more options. Xenos emulates the Xbox 360 GPU and covers the whole game; choose it if something does not look right with the native renderer.",
+    "Native",
+    "Graphics backend used by the game: Direct3D 12 or Vulkan. Applied on the next launch.",
     "Not available with the native renderer. Choose Xenos under Renderer to use it.",
     "MSAA",
     "4x (original)",
@@ -231,6 +231,8 @@ const char* const kStringsEn[] = {
     "Left mouse",
     "Right mouse",
     "Middle mouse",
+    "Native graphics API",
+    "Choose Direct3D 12 or Vulkan. Requires restarting the game. Vulkan currently queues one presentation at a time.",
 };
 
 // Portuguese string table (pt-BR)
@@ -375,8 +377,8 @@ const char* const kStringsPtBr[] = {
     "Idioma da interface do launcher",
     // --- Renderer ---
     "Xenos (GPU emulada)",
-    "Nativo (Direct3D 12)",
-    "O renderizador nativo desenha o jogo diretamente com Direct3D 12 e é o padrão: mais rápido e com mais opções. O Xenos emula a GPU do Xbox 360 e cobre o jogo inteiro; escolha-o se algo não aparecer certo com o renderizador nativo.",
+    "Nativo",
+    "API gráfica usada pelo jogo: Direct3D 12 ou Vulkan. A escolha é aplicada ao iniciar o jogo.",
     "Indisponível com o renderizador nativo. Escolha Xenos em Renderizador para usar.",
     "MSAA",
     "4x (original)",
@@ -442,6 +444,8 @@ const char* const kStringsPtBr[] = {
     "Mouse esq.",
     "Mouse dir.",
     "Mouse meio",
+    "API gráfica nativa",
+    "Escolha Direct3D 12 ou Vulkan. Requer reiniciar o jogo. Vulkan mantém uma apresentação pendente por vez.",
 };
 
 static_assert(std::size(kStringsEn) == static_cast<size_t>(TextId::Count));

@@ -212,6 +212,8 @@ enum class TextId {
   MouseLeftName,
   MouseRightName,
   MouseMiddleName,
+  NativeBackendLabel,
+  NativeBackendDescription,
   Count
 };
 

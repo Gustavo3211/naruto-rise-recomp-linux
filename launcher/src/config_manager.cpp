@@ -12,7 +12,11 @@ bool ConfigManager::Load(const std::filesystem::path& toml_path, GameConfig& con
     auto tbl = toml::parse_file(toml_path.string());
     if (auto v = tbl["gpu_plugin"].value<std::string>()) config.gpu_plugin = *v;
     if (auto v = tbl["renderer"].value<std::string>()) config.renderer = *v == "xenos" ? "xenos" : "native";
+    // The launcher now selects the native graphics API directly. Migrate old
+    // Xenos selections while preserving the saved native backend.
+    if (kNativeRendererBuilt) config.renderer = "native";
     if (auto v = tbl["graphics_device"].value<std::string>()) config.graphics_device = *v;
+    if (auto v = tbl["native_backend"].value<std::string>()) config.native_backend = *v;
     if (auto v = tbl["d3d12_readback_resolve"].value<bool>()) config.d3d12_readback_resolve = *v;
     if (auto v = tbl["skip_intro_videos"].value<bool>()) config.skip_intro_videos = *v;
     if (auto v = tbl["user_language"].value<std::uint32_t>()) config.user_language = *v;
@@ -81,7 +85,8 @@ bool ConfigManager::Save(const std::filesystem::path& toml_path, const GameConfi
   // game: a configuration that still has it loses it on the first save.
   tbl.erase("unlock_fps");
   if (kNativeRendererBuilt) {
-    tbl.insert_or_assign("renderer", config.renderer);
+    tbl.insert_or_assign("renderer", "native");
+    tbl.insert_or_assign("native_backend", config.native_backend);
     tbl.insert_or_assign("msaa_samples", config.msaa_samples);
     tbl.insert_or_assign("transparency_antialiasing", config.transparency_antialiasing);
     tbl.insert_or_assign("frame_rate", config.frame_rate);

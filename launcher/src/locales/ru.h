@@ -138,8 +138,8 @@ inline constexpr const char* kRu[] = {
     "Применяется при запуске игры. Доступные тексты и озвучка зависят от файлов игры.",  // GameLanguageDescription
     "Язык интерфейса лаунчера",  // LauncherLanguageTooltip
     "Xenos (эмуляция GPU)",  // RendererXenos
-    "Нативный (Direct3D 12)",  // RendererNative
-    "Нативный рендерер рисует игру напрямую через Direct3D 12 и используется по умолчанию: быстрее и с дополнительными настройками. Xenos эмулирует GPU Xbox 360 и поддерживает всю игру; выберите его, если с нативным рендерером что-то отображается неправильно.",  // RendererDescription
+    "Нативный",  // RendererNative
+    "Графический API игры: Direct3D 12 или Vulkan. Выбор применяется при следующем запуске.",  // RendererDescription
     "Недоступно с нативным рендерером. Чтобы включить, выберите Xenos в пункте «Рендерер».",  // XenosOnlyReason
     "MSAA",  // MsaaLabel
     "4x (оригинал)",  // MsaaOriginal
@@ -205,6 +205,8 @@ inline constexpr const char* kRu[] = {
     "ЛКМ",  // MouseLeftName
     "ПКМ",  // MouseRightName
     "СКМ",  // MouseMiddleName
+    "Графический API",  // NativeBackendLabel
+    "Выберите Direct3D 12 или Vulkan. Требуется перезапуск игры. Vulkan ставит в очередь один кадр.",  // NativeBackendDescription
 };
 
 }  // namespace localization_strings

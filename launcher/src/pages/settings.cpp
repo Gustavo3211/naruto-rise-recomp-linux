@@ -50,6 +50,7 @@ constexpr Option kMouseSensitivity{TextId::MouseSensitivityLabel, TextId::MouseS
 constexpr Option kKeys{TextId::KeysLabel, TextId::KeysDescription};
 
 constexpr Option kFrameLatency{TextId::FrameLatencyLabel, TextId::FrameLatencyDescription, Renderer::kNative};
+constexpr Option kVulkanFrameLatency{TextId::FrameLatencyLabel, TextId::NativeBackendDescription, Renderer::kNative};
 constexpr Option kTripleBuffering{TextId::TripleBufferingLabel, TextId::TripleBufferingDescription,
                                   Renderer::kNative};
 constexpr Option kFpsOverlay{TextId::FpsOverlayLabel, TextId::FpsOverlayDescription, Renderer::kXenos};
@@ -92,17 +93,25 @@ void RenderGameGroup(OptionList& list, GameConfig& config) {
 }
 
 void RenderDisplayGroup(OptionList& list, GameConfig& config) {
-  const bool native = kNativeRendererBuilt && config.renderer == "native";
-  if (kNativeRendererBuilt) {
-    const char* renderers[] = {Tr(TextId::RendererXenos), Tr(TextId::RendererNative)};
-    int renderer = native ? 1 : 0;
-    if (list.Combo(kRenderer, renderer, renderers)) config.renderer = renderer == 1 ? "native" : "xenos";
+  const bool native = kNativeRendererBuilt;
+  if (native) {
+    std::vector<const char*> names;
+    std::vector<std::string> values;
+    if (kNativeD3d12Built) { names.push_back("Direct3D 12"); values.emplace_back("d3d12"); }
+    if (kNativeVulkanBuilt) { names.push_back("Vulkan"); values.emplace_back("vulkan"); }
+    int backend = -1;
+    for (size_t i = 0; i < values.size(); ++i) if (values[i] == config.native_backend) backend = int(i);
+    if (list.Combo(kRenderer, backend, names) && backend >= 0) {
+      config.renderer = "native";
+      config.native_backend = values[backend];
+      config.graphics_device.clear(); // Device names are enumerated separately by each API.
+    }
   }
 
   // Automatic, the cards present, and a saved card that is no longer present.
   std::vector<const char*> devices = {Tr(TextId::GraphicsDeviceAuto)};
   int device = 0;
-  for (const auto& name : GraphicsDevices()) {
+  for (const auto& name : GraphicsDevices(native && config.native_backend == "vulkan")) {
     if (name == config.graphics_device) device = static_cast<int>(devices.size());
     devices.push_back(name.c_str());
   }
@@ -214,7 +223,9 @@ void RenderControlsGroup(OptionList& list, GameConfig& config) {
 void RenderAdvancedGroup(OptionList& list, GameConfig& config) {
   const char* latencies[] = {Tr(TextId::FrameLatencyLowest), "2", "3"};
   int latency = std::clamp(config.max_frame_latency, 1, 3) - 1;
-  if (list.Combo(kFrameLatency, latency, latencies)) config.max_frame_latency = latency + 1;
+  if (kNativeRendererBuilt && config.native_backend == "vulkan")
+    list.Text(kVulkanFrameLatency, latencies[0]);
+  else if (list.Combo(kFrameLatency, latency, latencies)) config.max_frame_latency = latency + 1;
   list.Checkbox(kTripleBuffering, config.triple_buffering);
   list.Checkbox(kFpsOverlay, config.show_fps_overlay);
 }
@@ -286,7 +297,7 @@ void RenderGroupList(float height) {
 
 // The options of the active group; returns the one to describe.
 const Option* RenderOptions(GameConfig& config, float height) {
-  const bool native = kNativeRendererBuilt && config.renderer == "native";
+  const bool native = kNativeRendererBuilt;
   const Group& group = kGroups[g_group];
   ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(18, 14));
   ImGui::BeginChild("Options", ImVec2(0, height), ImGuiChildFlags_Borders | ImGuiChildFlags_AlwaysUseWindowPadding);
@@ -353,7 +364,7 @@ void RenderSettingsPage(PageContext& context) {
   const float spacing = ImGui::GetStyle().ItemSpacing.y;
   const float options_height = std::max(
       160.0f, ImGui::GetContentRegionAvail().y - kDescriptionHeight - ActionsHeight() - 2 * spacing);
-  const bool native = kNativeRendererBuilt && context.config.renderer == "native";
+  const bool native = kNativeRendererBuilt;
 
   RenderGroupList(options_height);
   ImGui::SameLine();
