@@ -64,6 +64,12 @@ inline constexpr const char* kEs[] = {
     "Falta el ejecutable del juego para PC. Vuelve a instalar la versión para PC.",  // ExeMissing
     "No se encontró la versión para PC",  // ExeMissingStatus
     "Archivos del juego detectados",  // FilesDetected
+    "Extract ISO...",  // BtnExtractISO
+    "Extract Xbox 360 ISO",  // ISOExtractTitle
+    "Select an Xbox 360 ISO file to extract. The extracted files will be placed in a 'game_root' folder next to the launcher.",  // ISOExtractHint
+    "ISO extracted successfully to: ",  // ISOExtractSuccess
+    "Failed to extract ISO: ",  // ISOExtractFailed
+    "Extracting ISO... this may take a few minutes.",  // ISOExtractInProgress
     "DLC",  // TabDlc
     "Instala los paquetes de personajes DLC de Naruto: Rise of a Ninja.",  // DlcIntro
     "DLC instalados",  // DlcInstalledHeading

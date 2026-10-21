@@ -64,6 +64,12 @@ inline constexpr const char* kRu[] = {
     "Исполняемый файл версии для ПК отсутствует. Переустановите её с помощью установщика.",  // ExeMissing
     "Версия для ПК не найдена",  // ExeMissingStatus
     "Файлы игры найдены",  // FilesDetected
+    "Extract ISO...",  // BtnExtractISO
+    "Extract Xbox 360 ISO",  // ISOExtractTitle
+    "Select an Xbox 360 ISO file to extract. The extracted files will be placed in a 'game_root' folder next to the launcher.",  // ISOExtractHint
+    "ISO extracted successfully to: ",  // ISOExtractSuccess
+    "Failed to extract ISO: ",  // ISOExtractFailed
+    "Extracting ISO... this may take a few minutes.",  // ISOExtractInProgress
     "DLC",  // TabDlc
     "Установите DLC с персонажами для Naruto: Rise of a Ninja.",  // DlcIntro
     "Установленные DLC",  // DlcInstalledHeading

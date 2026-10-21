@@ -65,6 +65,13 @@ enum class TextId {
   ExeMissing,
   ExeMissingStatus,
   FilesDetected,
+  // --- ISO Extraction ---
+  BtnExtractISO,
+  ISOExtractTitle,
+  ISOExtractHint,
+  ISOExtractSuccess,
+  ISOExtractFailed,
+  ISOExtractInProgress,
   // --- DLC / Content ---
   TabDlc,
   DlcIntro,

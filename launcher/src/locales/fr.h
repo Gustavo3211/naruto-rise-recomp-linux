@@ -64,6 +64,12 @@ inline constexpr const char* kFr[] = {
     "L'exécutable PC du jeu est absent. Réinstallez le port avec l'installateur.",  // ExeMissing
     "Port PC introuvable",  // ExeMissingStatus
     "Fichiers du jeu détectés",  // FilesDetected
+    "Extract ISO...",  // BtnExtractISO
+    "Extract Xbox 360 ISO",  // ISOExtractTitle
+    "Select an Xbox 360 ISO file to extract. The extracted files will be placed in a 'game_root' folder next to the launcher.",  // ISOExtractHint
+    "ISO extracted successfully to: ",  // ISOExtractSuccess
+    "Failed to extract ISO: ",  // ISOExtractFailed
+    "Extracting ISO... this may take a few minutes.",  // ISOExtractInProgress
     "DLC",  // TabDlc
     "Installez les packs de personnages DLC de Naruto: Rise of a Ninja.",  // DlcIntro
     "DLC installés",  // DlcInstalledHeading

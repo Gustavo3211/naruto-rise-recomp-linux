@@ -64,6 +64,12 @@ inline constexpr const char* kDe[] = {
     "Das PC-Spielprogramm fehlt. Installiere den Port erneut.",  // ExeMissing
     "PC-Port nicht gefunden",  // ExeMissingStatus
     "Spieldateien erkannt",  // FilesDetected
+    "Extract ISO...",  // BtnExtractISO
+    "Extract Xbox 360 ISO",  // ISOExtractTitle
+    "Select an Xbox 360 ISO file to extract. The extracted files will be placed in a 'game_root' folder next to the launcher.",  // ISOExtractHint
+    "ISO extracted successfully to: ",  // ISOExtractSuccess
+    "Failed to extract ISO: ",  // ISOExtractFailed
+    "Extracting ISO... this may take a few minutes.",  // ISOExtractInProgress
     "DLC",  // TabDlc
     "Installiere DLC-Charakterpakete für Naruto: Rise of a Ninja.",  // DlcIntro
     "Installierte DLCs",  // DlcInstalledHeading
