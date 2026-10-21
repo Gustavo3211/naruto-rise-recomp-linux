@@ -5,19 +5,22 @@
 #include <optional>
 #include <string>
 
+#if defined(_WIN32)
 #include <windows.h>
 #include <d3d12.h>
 #include <dxgi.h>
 #include <wrl/client.h>
+#endif
 
 #include <rex/cvar.h>
 #include <rex/logging.h>
 
 REXCVAR_DEFINE_STRING(graphics_device, "", "narutorise/Graphics",
-                      "Graphics card by its name as Windows lists it (empty = automatic)")
+                      "Graphics card by its name as the system lists it (empty = automatic)")
     .lifecycle(rex::cvar::Lifecycle::kRequiresRestart);
 
 namespace {
+#if defined(_WIN32)
 std::optional<std::string> configured_adapter;
 
 std::string Utf8(const wchar_t* text) {
@@ -27,9 +30,11 @@ std::string Utf8(const wchar_t* text) {
   WideCharToMultiByte(CP_UTF8, 0, text, -1, out.data(), size, nullptr, nullptr);
   return out;
 }
+#endif
 }  // namespace
 
 void SelectXenosAdapter() {
+#if defined(_WIN32)
   const std::string name = REXCVAR_GET(graphics_device);
   if (name.empty() || !rex::cvar::GetFlagInfo("d3d12_adapter")) return;
   // The order of the SDK's provider (d3d12_provider.cpp): EnumAdapters1.
@@ -51,10 +56,15 @@ void SelectXenosAdapter() {
     return;
   }
   REXLOG_WARN("[narutorise] graphics_device \"{}\" not found; the automatic choice is used", name);
+#endif
+  // The Vulkan Xenos provider chooses its device itself; the native Vulkan
+  // renderer selects by name in gpu/host/engines.cpp.
 }
 
 void RestoreXenosAdapter() {
+#if defined(_WIN32)
   if (!configured_adapter) return;
   rex::cvar::SetFlagByName("d3d12_adapter", *configured_adapter);
   configured_adapter.reset();
+#endif
 }

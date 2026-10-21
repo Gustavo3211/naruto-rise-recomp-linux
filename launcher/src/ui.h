@@ -3,6 +3,8 @@
 #include <filesystem>
 #include <string>
 
+#include <imgui.h>
+
 #include "config_manager.h"
 #include "localization.h"
 #include "pages/pages.h"
@@ -10,7 +12,6 @@
 #include "update_installer.h"
 
 struct SDL_Window;
-struct ID3D11ShaderResourceView;
 
 // C++ dependencies for isolated end-to-end tests; production uses GitHub and
 // the normal per-user cache. No test endpoint is exposed in the application UI.
@@ -25,7 +26,7 @@ struct LauncherUpdateServices {
 class LauncherUI {
  public:
   struct Cover {
-    ID3D11ShaderResourceView* texture = nullptr;  // Null draws a gradient with the title.
+    ImTextureID texture = ImTextureID_Invalid;  // Null draws a gradient with the title.
     int width = 0;
     int height = 0;
   };

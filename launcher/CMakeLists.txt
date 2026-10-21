@@ -49,7 +49,7 @@ if(WIN32)
     add_executable(narutorise_launcher WIN32 ${LAUNCHER_SOURCES})
 else()
     list(APPEND LAUNCHER_SOURCES
-        ${CMAKE_CURRENT_SOURCE_DIR}/../sdk/thirdparty/imgui/backends/imgui_impl_vulkan.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/../sdk/thirdparty/imgui/backends/imgui_impl_sdlgpu3.cpp
     )
     add_executable(narutorise_launcher ${LAUNCHER_SOURCES})
 endif()

@@ -9,6 +9,9 @@
 #include <backends/imgui_impl_dx11.h>
 #include <d3d11.h>
 #include <dxgi.h>
+#else
+#include <backends/imgui_impl_sdlgpu3.h>
+#include <SDL3/SDL_gpu.h>
 #endif
 
 #include "config_manager.h"
@@ -102,6 +105,9 @@ static void CleanupDeviceD3D() {
     g_pd3dDevice = nullptr;
   }
 }
+#else
+static SDL_GPUDevice* g_gpu_device = nullptr;
+static SDL_GPUTextureFormat g_swapchain_format = SDL_GPU_TEXTUREFORMAT_INVALID;
 #endif
 
 int main(int argc, char* argv[]) {
@@ -157,11 +163,30 @@ int main(int argc, char* argv[]) {
     SDL_Quit();
     return 1;
   }
+#else
+  // SDL_GPU picks the platform's native API. On Linux that is Vulkan; the
+  // launcher never talks to the API directly, it only hands textures to ImGui.
+  g_gpu_device = SDL_CreateGPUDevice(SDL_GPU_SHADERFORMAT_SPIRV, false, nullptr);
+  if (!g_gpu_device || !SDL_ClaimWindowForGPUDevice(g_gpu_device, window)) {
+    std::cerr << "Failed to initialize the SDL_GPU device: " << SDL_GetError() << std::endl;
+    if (g_gpu_device) SDL_DestroyGPUDevice(g_gpu_device);
+    SDL_DestroyWindow(window);
+    SDL_Quit();
+    return 1;
+  }
+  g_swapchain_format = SDL_GetGPUSwapchainTextureFormat(g_gpu_device, window);
+#endif
 
   // Load cover artwork texture
+#if defined(_WIN32)
   LoadedTexture cover_tex = LoadTextureFromFile(g_pd3dDevice, base_dir / "assets" / "cover.jpg");
   if (!cover_tex.srv) {
     cover_tex = LoadTextureFromFile(g_pd3dDevice, base_dir / "cover.jpg");
+  }
+#else
+  LoadedTexture cover_tex = LoadTextureFromFile(g_gpu_device, base_dir / "assets" / "cover.jpg");
+  if (!cover_tex.srv) {
+    cover_tex = LoadTextureFromFile(g_gpu_device, base_dir / "cover.jpg");
   }
 #endif
 
@@ -178,13 +203,17 @@ int main(int argc, char* argv[]) {
 #if defined(_WIN32)
   ImGui_ImplSDL3_InitForD3D(window);
   ImGui_ImplDX11_Init(g_pd3dDevice, g_pd3dDeviceContext);
+#else
+  ImGui_ImplSDL3_InitForSDLGPU(window);
+  ImGui_ImplSDLGPU3_InitInfo init_info = {};
+  init_info.Device = g_gpu_device;
+  init_info.ColorTargetFormat = g_swapchain_format;
+  init_info.MSAASamples = SDL_GPU_SAMPLECOUNT_1;
+  ImGui_ImplSDLGPU3_Init(&init_info);
 #endif
 
-#if defined(_WIN32)
-  LauncherUI ui(window, base_dir, {cover_tex.srv, cover_tex.width, cover_tex.height});
-#else
-  LauncherUI ui(window, base_dir, {});
-#endif
+  LauncherUI ui(window, base_dir,
+                {reinterpret_cast<ImTextureID>(cover_tex.srv), cover_tex.width, cover_tex.height});
 
   bool running = true;
   bool request_launch = false;
@@ -220,6 +249,8 @@ int main(int argc, char* argv[]) {
 
 #if defined(_WIN32)
     ImGui_ImplDX11_NewFrame();
+#else
+    ImGui_ImplSDLGPU3_NewFrame();
 #endif
     ImGui_ImplSDL3_NewFrame();
     ImGui::NewFrame();
@@ -233,6 +264,33 @@ int main(int argc, char* argv[]) {
     g_pd3dDeviceContext->ClearRenderTargetView(g_mainRenderTargetView, clear_color);
     ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
     g_pSwapChain->Present(1, 0); // VSync enabled
+#else
+    SDL_GPUCommandBuffer* command = SDL_AcquireGPUCommandBuffer(g_gpu_device);
+    if (command) {
+      SDL_GPUTexture* swapchain = nullptr;
+      Uint32 swapchain_width = 0;
+      Uint32 swapchain_height = 0;
+      if (SDL_WaitAndAcquireGPUSwapchainTexture(
+              command, window, &swapchain, &swapchain_width, &swapchain_height) &&
+          swapchain) {
+        ImDrawData* draw_data = ImGui::GetDrawData();
+        ImGui_ImplSDLGPU3_PrepareDrawData(draw_data, command);
+        SDL_GPUColorTargetInfo target = {};
+        target.texture = swapchain;
+        target.clear_color = {0.09f, 0.09f, 0.11f, 1.00f};
+        target.load_op = SDL_GPU_LOADOP_CLEAR;
+        target.store_op = SDL_GPU_STOREOP_STORE;
+        SDL_GPURenderPass* pass = SDL_BeginGPURenderPass(command, &target, 1, nullptr);
+        if (pass) {
+          ImGui_ImplSDLGPU3_RenderDrawData(draw_data, command, pass);
+          SDL_EndGPURenderPass(pass);
+        }
+      } else {
+        // Minimized or the swapchain is not ready yet; keep the window alive.
+        SDL_Delay(10);
+      }
+      SDL_SubmitGPUCommandBuffer(command);
+    }
 #endif
 
     if (running && ui.ApplyRequestedUpdate(config)) {
@@ -330,6 +388,8 @@ int main(int argc, char* argv[]) {
 
 #if defined(_WIN32)
   ImGui_ImplDX11_Shutdown();
+#else
+  ImGui_ImplSDLGPU3_Shutdown();
 #endif
   ImGui_ImplSDL3_Shutdown();
   ImGui::DestroyContext();
@@ -337,6 +397,12 @@ int main(int argc, char* argv[]) {
 #if defined(_WIN32)
   cover_tex.Release();
   CleanupDeviceD3D();
+#else
+  ReleaseTexture(g_gpu_device, cover_tex);
+  SDL_WaitForGPUIdle(g_gpu_device);
+  SDL_ReleaseWindowFromGPUDevice(g_gpu_device, window);
+  SDL_DestroyGPUDevice(g_gpu_device);
+  g_gpu_device = nullptr;
 #endif
   SDL_DestroyWindow(window);
   SDL_Quit();

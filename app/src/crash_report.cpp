@@ -18,7 +18,9 @@
 
 #include "crash_report.h"
 
+#if defined(_WIN32)
 #include <windows.h>
+#endif
 
 #include <atomic>
 #include <cstdint>
@@ -55,7 +57,11 @@ std::atomic<uint32_t> reports{0};
 thread_local bool reporting = false;
 
 uint32_t Load32(const uint8_t* base, uint32_t address) {
+#if defined(_WIN32)
   return _byteswap_ulong(*reinterpret_cast<const uint32_t*>(base + address));
+#else
+  return __builtin_bswap32(*reinterpret_cast<const uint32_t*>(base + address));
+#endif
 }
 
 // Guest reads that cannot fault: the host page must be committed and
@@ -72,6 +78,7 @@ class Reader {
 
  private:
   bool Readable(const uint8_t* host, size_t size) {
+#if defined(_WIN32)
     const uintptr_t begin = reinterpret_cast<uintptr_t>(host), end = begin + size;
     if (begin >= begin_ && end <= end_) return true;
     MEMORY_BASIC_INFORMATION info{};
@@ -80,6 +87,13 @@ class Reader {
     begin_ = reinterpret_cast<uintptr_t>(info.BaseAddress);
     end_ = begin_ + info.RegionSize;
     return end <= end_;
+#else
+    // The guest fault reporter is a Windows vectored exception handler; the
+    // portable build uses the SDK's own diagnostics instead.
+    (void)host;
+    (void)size;
+    return false;
+#endif
   }
   const uint8_t* base_;
   uintptr_t begin_ = 0, end_ = 0;
@@ -223,6 +237,7 @@ void Report(const char* kind, uint32_t code, uint64_t host_fault) {
 // After the SDK's handler (first in the order), which resumes the faults it
 // handles (the write watch, the MMIO windows) and leaves the rest to the
 // search, so the report sees only those. A fault of the report itself passes.
+#if defined(_WIN32)
 LONG WINAPI Handler(EXCEPTION_POINTERS* pointers) {
   if (!pointers || !pointers->ExceptionRecord) return EXCEPTION_CONTINUE_SEARCH;
   const EXCEPTION_RECORD& record = *pointers->ExceptionRecord;
@@ -247,6 +262,7 @@ LONG WINAPI Handler(EXCEPTION_POINTERS* pointers) {
   reporting = false;
   return EXCEPTION_CONTINUE_SEARCH;
 }
+#endif
 
 // The chain a transform update follows (8266AE68): an object not yet activated
 // (bit 0 of its flags clear) with the link flag 0x400000 recurses into the
@@ -281,10 +297,12 @@ bool LinkCycle(Reader& reader, uint32_t object, std::string* text) {
 }  // namespace
 
 void Install() {
+#if defined(_WIN32)
   static bool installed = false;
   if (installed) return;
   installed = true;
   AddVectoredExceptionHandler(0, Handler);  // Last.
+#endif
 }
 }  // namespace narutorise::crash_report
 

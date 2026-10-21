@@ -9,7 +9,12 @@ set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Enable AMD FidelityFX present effects (CAS/FSR) for the D3D12 presenter.
-set(REXGLUE_ENABLE_FIDELITYFX ON CACHE BOOL "Enable AMD FidelityFX integration" FORCE)
+# The SDK's FidelityFX integration is Direct3D 12 only.
+if(WIN32)
+    set(REXGLUE_ENABLE_FIDELITYFX ON CACHE BOOL "Enable AMD FidelityFX integration" FORCE)
+else()
+    set(REXGLUE_ENABLE_FIDELITYFX OFF CACHE BOOL "Enable AMD FidelityFX integration" FORCE)
+endif()
 
 include(generated/rexglue.cmake)
 

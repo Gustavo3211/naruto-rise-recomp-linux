@@ -161,7 +161,7 @@ void LauncherUI::RenderCover(float width, float height) {
       const float visible = image_aspect / panel_aspect;
       uv0.y = (1 - visible) / 2; uv1.y = 1 - uv0.y;
     }
-    draw->AddImage(reinterpret_cast<ImTextureID>(cover_.texture), ImVec2(0, 0), ImVec2(width, height), uv0, uv1);
+    draw->AddImage(cover_.texture, ImVec2(0, 0), ImVec2(width, height), uv0, uv1);
   } else {
     draw->AddRectFilledMultiColor(ImVec2(0, 0), ImVec2(width, height),
         IM_COL32(59, 37, 27, 255), IM_COL32(31, 29, 35, 255),
