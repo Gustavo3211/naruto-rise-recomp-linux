@@ -115,7 +115,7 @@ void LauncherUI::Render(GameConfig& config, bool& request_launch, std::string& s
 
 void LauncherUI::RenderCover(float width, float height) const {
   auto* draw = ImGui::GetWindowDrawList();
-  if (cover_.texture && cover_.width > 0 && cover_.height > 0) {
+  if (cover_.texture != ImTextureID_Invalid && cover_.width > 0 && cover_.height > 0) {
     // Cover fit: crop symmetrically instead of stretching the artwork.
     const float image_aspect = static_cast<float>(cover_.width) / cover_.height;
     const float panel_aspect = width / height;

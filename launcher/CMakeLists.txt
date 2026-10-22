@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.25)
-project(narutorise_launcher LANGUAGES CXX)
+project(narutorise_launcher LANGUAGES CXX C)
 
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -20,6 +20,10 @@ set(LAUNCHER_SOURCES
     src/widgets.cpp
     src/pages/dlc.cpp
     src/pages/game_files.cpp
+    src/miniz.c
+    src/miniz_zip.c
+    src/miniz_tinfl.c
+    src/miniz_tdef.c
     src/pages/key_mapping.cpp
     src/pages/play.cpp
     src/pages/settings.cpp

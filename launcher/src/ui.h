@@ -3,18 +3,19 @@
 #include <filesystem>
 #include <string>
 
+#include <imgui.h>
+
 #include "config_manager.h"
 #include "pages/pages.h"
 
 struct SDL_Window;
-struct ID3D11ShaderResourceView;
 
 // The launcher window: the cover on the left; on the right the header with the
 // tabs and the language, the page of the selected tab and the footer.
 class LauncherUI {
  public:
   struct Cover {
-    ID3D11ShaderResourceView* texture = nullptr;  // Null draws a gradient with the title.
+    ImTextureID texture = ImTextureID_Invalid;  // Null draws a gradient with the title.
     int width = 0;
     int height = 0;
   };
