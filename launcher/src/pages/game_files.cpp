@@ -20,13 +20,11 @@
 
 namespace launcher_ui {
 
-// The folder dialog answers on another thread.
 std::mutex g_dialog_mutex;
 std::string g_selected_folder;
 bool g_dialog_pending = false;
 bool g_dialog_updated = false;
 
-// ISO extraction state.
 std::mutex g_iso_mutex;
 std::string g_selected_iso;
 bool g_iso_pending = false;
@@ -36,13 +34,13 @@ std::string g_iso_output;
 bool g_iso_finished = false;
 bool g_iso_success = false;
 
-// extract-xiso download state.
 std::mutex g_download_mutex;
 bool g_downloading = false;
 std::string g_download_status;
 std::string g_download_output;
 bool g_download_finished = false;
 bool g_download_success = false;
+bool g_extract_xiso_ready = false;
 
 void SDLCALL FolderDialogCallback(void*, const char* const* files, int) {
   std::lock_guard lock(g_dialog_mutex);
@@ -71,9 +69,7 @@ bool DialogPending() {
   return g_dialog_pending;
 }
 
-// Find extract-xiso binary (searches recursively in tools/extract-xiso/)
 std::filesystem::path FindExtractXiso() {
-  // 1. Check tools/extract-xiso/extract-xiso (Linux native) - direct path
   std::filesystem::path local = "tools/extract-xiso/extract-xiso";
   if (std::filesystem::exists(local)) {
     auto perms = std::filesystem::status(local).permissions();
@@ -82,7 +78,6 @@ std::filesystem::path FindExtractXiso() {
     }
   }
 
-  // 2. Search recursively in tools/extract-xiso/ for any extract-xiso binary
   std::filesystem::path extract_dir = "tools/extract-xiso";
   if (std::filesystem::exists(extract_dir)) {
     for (const auto& entry : std::filesystem::recursive_directory_iterator(extract_dir)) {
@@ -98,7 +93,6 @@ std::filesystem::path FindExtractXiso() {
     }
   }
 
-  // 2b. Check tools/extract-xiso/extract-xiso.exe (Windows via Wine)
   std::filesystem::path local_exe = "tools/extract-xiso/extract-xiso.exe";
   if (std::filesystem::exists(local_exe)) {
     if (std::filesystem::exists("/usr/bin/wine")) {
@@ -106,7 +100,6 @@ std::filesystem::path FindExtractXiso() {
     }
   }
 
-  // 3. Check system PATH
   if (std::filesystem::exists("/usr/bin/extract-xiso")) {
     return "/usr/bin/extract-xiso";
   }
@@ -114,12 +107,9 @@ std::filesystem::path FindExtractXiso() {
   return {};
 }
 
-// Download extract-xiso Linux binary and extract using miniz C library (no Python, no unzip)
 void DownloadExtractXisoThread() {
   const std::string url = "https://github.com/XboxDev/extract-xiso/releases/latest/download/extract-xiso_Linux.zip";
   const std::filesystem::path zip_path = "tools/extract-xiso/extract-xiso_Linux.zip";
-  const std::filesystem::path extract_dir = "tools/extract-xiso";
-  const std::filesystem::path binary_path = extract_dir / "extract-xiso";
 
   {
     std::lock_guard lock(g_download_mutex);
@@ -127,15 +117,14 @@ void DownloadExtractXisoThread() {
     g_download_status = "Baixando extract-xiso...";
     g_download_output.clear();
     g_download_finished = false;
+    g_extract_xiso_ready = false;
   }
 
-  // Create directory
   std::error_code ec;
   std::filesystem::create_directories("tools/extract-xiso", ec);
 
-  // Download using curl
   std::vector<std::string> cmd_args = {
-    "curl", "-fL", "--progress-bar", 
+    "curl", "-fL", "--progress-bar",
     "https://github.com/XboxDev/extract-xiso/releases/latest/download/extract-xiso_Linux.zip",
     "-o", "tools/extract-xiso/extract-xiso_Linux.zip"
   };
@@ -162,7 +151,7 @@ void DownloadExtractXisoThread() {
       g_download_status = "Falha ao iniciar download";
       g_downloading = false;
       g_download_finished = true;
-      g_download_success = false;
+      g_extract_xiso_ready = false;
     }
     return;
   }
@@ -177,7 +166,7 @@ void DownloadExtractXisoThread() {
       g_download_status = "Falha no download (curl)";
       g_downloading = false;
       g_download_finished = true;
-      g_download_success = false;
+      g_extract_xiso_ready = false;
     }
     return;
   }
@@ -188,7 +177,6 @@ void DownloadExtractXisoThread() {
     g_download_output = "Download completo. Extraindo zip via miniz...";
   }
 
-  // Extract zip using miniz C library (no Python, no unzip)
   mz_zip_archive zip_archive = {};
   if (!mz_zip_reader_init_file(&zip_archive, "tools/extract-xiso/extract-xiso_Linux.zip", 0)) {
     {
@@ -196,20 +184,18 @@ void DownloadExtractXisoThread() {
       g_download_status = "Falha ao abrir ZIP";
       g_downloading = false;
       g_download_finished = true;
-      g_download_success = false;
+      g_extract_xiso_ready = false;
     }
     return;
   }
 
-  // Get number of files in zip
   int num_files = mz_zip_reader_get_num_files(&zip_archive);
-  
+
   {
     std::lock_guard lock(g_download_mutex);
     g_download_status = "Extraindo " + std::to_string(num_files) + " arquivos...";
   }
 
-  // Extract all files
   bool extract_ok = true;
   int extracted_count = 0;
   for (int i = 0; i < num_files; ++i) {
@@ -219,12 +205,10 @@ void DownloadExtractXisoThread() {
       break;
     }
 
-    // Skip directories
     if (mz_zip_reader_is_file_a_directory(&zip_archive, i)) {
       continue;
     }
 
-    // Extract file to memory first
     size_t uncompressed_size = 0;
     void* p_data = mz_zip_reader_extract_to_heap(&zip_archive, i, &uncompressed_size, 0);
     if (!p_data) {
@@ -232,14 +216,12 @@ void DownloadExtractXisoThread() {
       break;
     }
 
-    // Get filename
     char filename[256];
     mz_zip_reader_get_filename(&zip_archive, i, filename, sizeof(filename));
 
-    // Write to disk
     std::filesystem::path out_path = std::filesystem::path("tools/extract-xiso") / filename;
     std::filesystem::create_directories(out_path.parent_path());
-    
+
     std::ofstream out_file(out_path, std::ios::binary);
     if (!out_file) {
       mz_free(p_data);
@@ -252,7 +234,6 @@ void DownloadExtractXisoThread() {
 
     extracted_count++;
 
-    // Update progress
     {
       std::lock_guard lock(g_download_mutex);
       g_download_output = "Extraindo: " + std::string(filename) + " (" + std::to_string(extracted_count) + "/" + std::to_string(num_files) + ")";
@@ -261,14 +242,13 @@ void DownloadExtractXisoThread() {
 
   mz_zip_reader_end(&zip_archive);
 
-  // Make binary executable
   if (extract_ok) {
     std::filesystem::path binary = "tools/extract-xiso/extract-xiso";
     if (std::filesystem::exists(binary)) {
       std::error_code ec2;
-      std::filesystem::permissions(binary, 
-        std::filesystem::perms::owner_exec | 
-        std::filesystem::perms::group_exec | 
+      std::filesystem::permissions(binary,
+        std::filesystem::perms::owner_exec |
+        std::filesystem::perms::group_exec |
         std::filesystem::perms::others_exec,
         std::filesystem::perm_options::add, ec2);
     }
@@ -282,27 +262,26 @@ void DownloadExtractXisoThread() {
       g_download_status = "extract-xiso pronto!";
       g_download_output += "\nextract-xiso instalado com sucesso (via miniz C).";
       g_download_success = true;
+      g_extract_xiso_ready = true;
     } else {
       g_download_status = "Falha na extração (miniz C)";
       g_download_success = false;
+      g_extract_xiso_ready = false;
     }
   }
 }
 
-// Check if extraction actually succeeded by looking for extracted files
 bool CheckExtractionSuccess(const std::filesystem::path& dest_dir) {
   std::error_code ec;
   if (!std::filesystem::exists(dest_dir, ec)) return false;
-  
-  // Check for key files that should exist after extraction
+
   std::vector<std::string> key_files = {"default.xex", "ai2c.dll"};
   for (const auto& file : key_files) {
     if (std::filesystem::exists(dest_dir / file, ec)) {
-      return true; // At least one key file exists
+      return true;
     }
   }
-  
-  // Fallback: check if directory has any files
+
   for (const auto& entry : std::filesystem::directory_iterator(dest_dir, ec)) {
     if (entry.is_regular_file()) {
       return true;
@@ -311,7 +290,6 @@ bool CheckExtractionSuccess(const std::filesystem::path& dest_dir) {
   return false;
 }
 
-// Extract ISO in background thread
 void ExtractISOThread(const std::filesystem::path& iso_path, const std::filesystem::path& dest_dir) {
   std::filesystem::path extract_xiso = FindExtractXiso();
   if (extract_xiso.empty()) {
@@ -325,11 +303,9 @@ void ExtractISOThread(const std::filesystem::path& iso_path, const std::filesyst
     return;
   }
 
-  // Create destination directory
   std::error_code ec;
   std::filesystem::create_directories(dest_dir, ec);
 
-  // Run extract-xiso
   std::vector<std::string> cmd_args;
   if (extract_xiso.extension() == ".exe") {
     cmd_args = {"/usr/bin/wine", extract_xiso.string(), "-x", "-d", dest_dir.string(), iso_path.string()};
@@ -364,20 +340,17 @@ void ExtractISOThread(const std::filesystem::path& iso_path, const std::filesyst
     return;
   }
 
-  // Wait for process to finish
   int exit_code = 0;
   bool waited = SDL_WaitProcess(proc, true, &exit_code);
   SDL_DestroyProcess(proc);
 
-  // Check if extraction actually worked by looking at the destination directory
   bool actually_succeeded = CheckExtractionSuccess(dest_dir);
-  
+
   {
     std::lock_guard lock(g_iso_mutex);
     g_iso_extracting = false;
     g_iso_finished = true;
-    
-    // Consider it a success if files were actually extracted, regardless of exit code
+
     if (actually_succeeded) {
       g_iso_status = std::string(Tr(TextId::ISOExtractSuccess)) + dest_dir.string();
       g_iso_output = "Extração concluída com sucesso!";
@@ -433,27 +406,23 @@ void RenderGameFilesPage(PageContext& context) {
   ImGui::EndDisabled();
   EndCard();
 
-  // ISO Extraction section
   ImGui::Spacing();
   BeginCard("ISOExtract", 0);
   Heading(Tr(TextId::ISOExtractTitle), 21);
   Muted(Tr(TextId::ISOExtractHint));
   ImGui::Spacing();
 
-  // Check if extract-xiso is available
   bool has_extract_xiso = !FindExtractXiso().empty();
 
-  // Download button if not available
   if (!has_extract_xiso) {
     ImGui::BeginDisabled(DialogPending() || g_downloading);
     if (PrimaryButton("Baixar extract-xiso (Linux)", ImVec2(-1, 38))) {
       { std::lock_guard lock(g_dialog_mutex); g_dialog_pending = true; }
-      { std::lock_guard lock(g_download_mutex); g_downloading = false; g_download_status.clear(); g_download_output.clear(); }
+      { std::lock_guard lock(g_download_mutex); g_downloading = false; g_download_status.clear(); g_download_output.clear(); g_download_finished = false; g_extract_xiso_ready = false; }
       std::thread(DownloadExtractXisoThread).detach();
     }
     ImGui::EndDisabled();
 
-    // Show download progress
     {
       std::lock_guard lock(g_download_mutex);
       if (g_downloading) {
@@ -482,8 +451,7 @@ void RenderGameFilesPage(PageContext& context) {
 
   ImGui::Spacing();
 
-  // ISO Extraction button - only disable during active extraction, not after failure
-  ImGui::BeginDisabled(DialogPending() || g_iso_extracting || !has_extract_xiso);
+  ImGui::BeginDisabled(DialogPending() || g_iso_extracting || !g_extract_xiso_ready);
   if (PrimaryButton(Tr(TextId::BtnExtractISO), ImVec2(-1, 38))) {
     { std::lock_guard lock(g_dialog_mutex); g_dialog_pending = true; }
     { std::lock_guard lock(g_iso_mutex); g_selected_iso.clear(); g_iso_pending = false; }
@@ -492,12 +460,10 @@ void RenderGameFilesPage(PageContext& context) {
   }
   ImGui::EndDisabled();
 
-  // Show ISO extraction progress
   {
     std::lock_guard lock(g_iso_mutex);
     if (g_iso_pending && !g_selected_iso.empty()) {
       g_iso_pending = false;
-      // Start extraction in background
       std::filesystem::path dest = std::filesystem::absolute("game_root");
       std::thread(ExtractISOThread, g_selected_iso, dest).detach();
     }
@@ -518,10 +484,8 @@ void RenderGameFilesPage(PageContext& context) {
           ImGui::TextUnformatted(g_iso_output.c_str());
           ImGui::EndChild();
         }
-        // Update game status if extraction succeeded
         context.config.custom_game_root = std::filesystem::absolute("game_root").string();
         context.status_message = g_iso_status;
-        // Reset extraction state - allow retry
         g_iso_finished = false;
         g_iso_status.clear();
         g_iso_output.clear();
@@ -533,7 +497,6 @@ void RenderGameFilesPage(PageContext& context) {
           ImGui::TextUnformatted(g_iso_output.c_str());
           ImGui::EndChild();
         }
-        // Reset state to allow retry - don't leave buttons greyed out
         g_iso_finished = false;
         g_iso_status.clear();
         g_iso_output.clear();
