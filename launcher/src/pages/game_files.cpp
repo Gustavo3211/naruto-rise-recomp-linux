@@ -9,7 +9,6 @@
 #include <filesystem>
 #include <fstream>
 
-#undef MINIZ_NO_STDIO
 #define MINIZ_NO_ARCHIVE_WRITING_APIS
 #include "miniz.h"
 
@@ -398,12 +397,11 @@ void RenderGameFilesPage(PageContext& context) {
   ImGui::PopStyleVar();
   Muted(Tr(TextId::FolderHint));
   ImGui::Spacing();
-  ImGui::BeginDisabled(DialogPending());
+
   if (PrimaryButton(Tr(TextId::BtnSelectFolder), ImVec2(-1, 38))) {
     { std::lock_guard lock(g_dialog_mutex); g_dialog_pending = true; }
     SDL_ShowOpenFolderDialog(FolderDialogCallback, nullptr, context.window, nullptr, false);
   }
-  ImGui::EndDisabled();
   EndCard();
 
   ImGui::Spacing();
@@ -415,13 +413,11 @@ void RenderGameFilesPage(PageContext& context) {
   bool has_extract_xiso = !FindExtractXiso().empty();
 
   if (!has_extract_xiso) {
-    ImGui::BeginDisabled(DialogPending() || g_downloading);
     if (PrimaryButton("Baixar extract-xiso (Linux)", ImVec2(-1, 38))) {
       { std::lock_guard lock(g_dialog_mutex); g_dialog_pending = true; }
       { std::lock_guard lock(g_download_mutex); g_downloading = false; g_download_status.clear(); g_download_output.clear(); g_download_finished = false; g_extract_xiso_ready = false; }
       std::thread(DownloadExtractXisoThread).detach();
     }
-    ImGui::EndDisabled();
 
     {
       std::lock_guard lock(g_download_mutex);
@@ -451,14 +447,12 @@ void RenderGameFilesPage(PageContext& context) {
 
   ImGui::Spacing();
 
-  ImGui::BeginDisabled(DialogPending() || g_iso_extracting || !g_extract_xiso_ready);
   if (PrimaryButton(Tr(TextId::BtnExtractISO), ImVec2(-1, 38))) {
     { std::lock_guard lock(g_dialog_mutex); g_dialog_pending = true; }
     { std::lock_guard lock(g_iso_mutex); g_selected_iso.clear(); g_iso_pending = false; }
     SDL_DialogFileFilter filter = { "Xbox 360 ISO", "iso" };
     SDL_ShowOpenFileDialog(ISODialogCallback, nullptr, context.window, &filter, 1, nullptr, false);
   }
-  ImGui::EndDisabled();
 
   {
     std::lock_guard lock(g_iso_mutex);
@@ -515,9 +509,7 @@ void RenderGameFilesPage(PageContext& context) {
     context.status_message = Tr(TextId::PathResetMsg);
   }
   ImGui::SameLine();
-  ImGui::BeginDisabled(!game.FilesFound());
   if (ImGui::Button(Tr(TextId::BtnOpenFolder), ImVec2(half_width, 36))) OpenFolder(game.game_root);
-  ImGui::EndDisabled();
   ImGui::Dummy(ImVec2(0, 14));
 
   BeginCard("SetupHelp", 0);
